@@ -205,3 +205,34 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ── quant_toolbox project-specific ─────────────────────────────────────────
+
+# Raw and processed data (can be very large)
+data/raw/
+data/processed/
+
+# Trained model weights (all common formats)
+model/
+!model/.gitkeep
+
+# Secrets and local environment overrides
+.env
+.env.*
+secrets.yaml
+secrets.yml
+
+# Jupyter / IPython artefacts
+*.ipynb
+!script/*.ipynb
+
+# Temporary / one-off scripts output
+script/__pycache__/
+
+# OS-level junk
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
