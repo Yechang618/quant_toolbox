@@ -15,9 +15,9 @@ pydantic-settings>=2.2.0  # BaseSettings for environment-variable loading
 
 # ── (Optional) Deep learning ────────────────────────────────────────────────
 # Uncomment the framework you intend to use:
-# torch>=2.2.0
-# tensorflow>=2.16.0
-# scikit-learn>=1.4.0
+torch>=2.2.0
+tensorflow>=2.16.0
+scikit-learn>=1.4.0
 
 # ── Development / testing ───────────────────────────────────────────────────
 pytest>=8.0.0
