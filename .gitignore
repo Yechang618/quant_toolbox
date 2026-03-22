@@ -236,3 +236,8 @@ Thumbs.db
 # Editor directories
 .vscode/
 .idea/
+
+# xlsx
+*.xlsx
+# pdf
+*.pdf

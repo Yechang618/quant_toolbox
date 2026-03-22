@@ -1,0 +1,20 @@
+sql:
+  finance_database:
+    host: ""
+    port: 3306
+    user:
+    password:
+
+  dev:
+    host:  "localhost"
+    port: 3333
+    user: "root"
+    password: "123"
+
+
+
+
+
+
+
+
