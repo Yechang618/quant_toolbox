@@ -1,82 +1,56 @@
 """
-Unified logging configuration for quant_toolbox.
-
-Call :func:`get_logger` from any module to obtain a properly configured logger.
-The root logger is configured once (on first import) so that all child loggers
-inherit the same format and level.
+util/logger.py
+Unified logging configuration.
 """
-
 import logging
 import sys
-from typing import Optional
+from pathlib import Path
+from util.config import settings
 
 
-_ROOT_CONFIGURED: bool = False
-_DEFAULT_FORMAT: str = (
-    "%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d | %(message)s"
-)
-_DEFAULT_DATE_FORMAT: str = "%Y-%m-%d %H:%M:%S"
-
-
-def configure_root_logger(
-    level: int = logging.INFO,
-    fmt: str = _DEFAULT_FORMAT,
-    datefmt: str = _DEFAULT_DATE_FORMAT,
-    log_file: Optional[str] = None,
-) -> None:
-    """Configure the root logger with a consistent format.
-
-    This function is idempotent: if the root logger has already been configured
-    by a previous call it returns immediately.
-
-    Args:
-        level: Logging level (e.g. ``logging.DEBUG``, ``logging.INFO``).
-        fmt: Log message format string.
-        datefmt: Date/time format string.
-        log_file: Optional path to a file where logs will also be written.
-            If *None*, logs are written to *stderr* only.
+def setup_logger(name: str, level: str = None, log_file: Path = None) -> logging.Logger:
     """
-    global _ROOT_CONFIGURED  # noqa: PLW0603
-    if _ROOT_CONFIGURED:
-        return
-
-    formatter = logging.Formatter(fmt=fmt, datefmt=datefmt)
-
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stderr)
-    console_handler.setFormatter(formatter)
-
-    root = logging.getLogger()
-    root.setLevel(level)
-    root.addHandler(console_handler)
-
-    # Optional file handler
-    if log_file:
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setFormatter(formatter)
-        root.addHandler(file_handler)
-
-    _ROOT_CONFIGURED = True
-
-
-def get_logger(name: str, level: Optional[int] = None) -> logging.Logger:
-    """Return a named logger, ensuring the root logger is configured.
-
+    Configure and return a logger instance.
+    
     Args:
-        name: Logger name, typically ``__name__``.
-        level: Optional override level for this specific logger.
-
+        name: Logger name (usually __name__)
+        level: Log level string, e.g., 'INFO'
+        log_file: Optional path to log file
+    
     Returns:
-        A :class:`logging.Logger` instance.
-
-    Example::
-
-        from util.logger import get_logger
-        logger = get_logger(__name__)
-        logger.info("Hello, world!")
+        Configured logger instance
     """
-    configure_root_logger()
-    log = logging.getLogger(name)
-    if level is not None:
-        log.setLevel(level)
-    return log
+    level = level or settings.log_level
+    log_file = log_file or settings.log_file
+    
+    logger = logging.getLogger(name)
+    logger.setLevel(getattr(logging, level.upper(), logging.INFO))
+    
+    # Avoid duplicate handlers
+    if logger.handlers:
+        return logger
+    
+    # Console handler
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+    console_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_handler.setFormatter(console_format)
+    logger.addHandler(console_handler)
+    
+    # File handler (optional)
+    if log_file:
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler.setLevel(logging.DEBUG)
+        file_format = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s'
+        )
+        file_handler.setFormatter(file_format)
+        logger.addHandler(file_handler)
+    
+    return logger
+
+
+def get_logger(name: str) -> logging.Logger:
+    """Get logger with default settings."""
+    return setup_logger(name)

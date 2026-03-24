@@ -1,107 +1,55 @@
 """
-Application configuration using Pydantic v2.
-
-All sensitive values (API keys, secrets) are loaded exclusively from
-environment variables or a ``.env`` file.
-
-WARNING: Never hard-code API keys or secrets in this file or anywhere else
-         in the codebase.  Always use environment variables.
-
-Usage::
-
-    from util.config import settings
-    print(settings.BINANCE_API_KEY)
+util/config.py
+Configuration management using pydantic-settings.
 """
-
+from pydantic_settings import BaseSettings
 from pathlib import Path
 from typing import Optional
 
-from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 class Settings(BaseSettings):
-    """Project-wide settings loaded from environment variables / .env file.
-
-    All fields with ``Optional`` type default to *None* so the application
-    can start without credentials (useful for offline/testing scenarios).
-    """
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore",
+    # Project paths
+    project_root: Path = Path(__file__).parent.parent
+    data_root: Path = project_root / "data"
+    dataset_root: Path = project_root / "dataset"
+    market_processed_root: Path = Path(
+        r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\market_processed"
     )
-
-    # ------------------------------------------------------------------
-    # Binance API credentials
-    # WARNING: Load from environment variables only – never hard-code.
-    # ------------------------------------------------------------------
-    BINANCE_API_KEY: Optional[str] = Field(
-        default=None,
-        description="Binance API key (set via BINANCE_API_KEY env var).",
+    bn_trade_root: Path = Path(
+        r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\bn_trade"
     )
-    BINANCE_API_SECRET: Optional[str] = Field(
-        default=None,
-        description="Binance API secret (set via BINANCE_API_SECRET env var).",
-    )
-
-    # ------------------------------------------------------------------
-    # Data paths
-    # ------------------------------------------------------------------
-    DATA_RAW_DIR: Path = Field(
-        default=Path("data/raw"),
-        description="Directory for raw downloaded data.",
-    )
-    DATA_PROCESSED_DIR: Path = Field(
-        default=Path("data/processed"),
-        description="Directory for preprocessed / feature-engineered data.",
-    )
-    MODEL_DIR: Path = Field(
-        default=Path("model"),
-        description="Directory for saved model weights.",
-    )
-
-    # ------------------------------------------------------------------
+    
+    # Output paths
+    output_root: Path = dataset_root / "preprocessed"
+    output_mode0: Path = output_root / "mode0"
+    output_mode2: Path = output_root / "mode2"
+    
+    # Binance API endpoints
+    binance_spot_url: str = "https://api.binance.com/api/v3/exchangeInfo"
+    binance_swap_url: str = "https://fapi.binance.com/fapi/v1/exchangeInfo"
+    
+    # Processing parameters
+    window_seconds: int = 60  # Backtrack window for feature extraction
+    default_ticksize: float = 1e-8  # Fallback ticksize if API fails
+    time_tolerance_ms: int = 100  # Allowed timestamp alignment tolerance
+    
+    # Cache settings
+    ticksize_cache_file: Path = project_root / "config" / "ticksize_cache.json"
+    ticksize_cache_ttl_hours: int = 24
+    
     # Logging
-    # ------------------------------------------------------------------
-    LOG_LEVEL: str = Field(
-        default="INFO",
-        description="Root logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL).",
-    )
-    LOG_FILE: Optional[str] = Field(
-        default=None,
-        description="Optional path to a log file.",
-    )
-
-    # ------------------------------------------------------------------
-    # Training hyper-parameters (sensible defaults)
-    # ------------------------------------------------------------------
-    RANDOM_SEED: int = Field(default=42, description="Global random seed.")
-    BATCH_SIZE: int = Field(default=64, description="Mini-batch size for training.")
-    LEARNING_RATE: float = Field(default=1e-3, description="Initial learning rate.")
-    NUM_EPOCHS: int = Field(default=50, description="Maximum training epochs.")
-
-    # ------------------------------------------------------------------
-    # Validators
-    # ------------------------------------------------------------------
-    @field_validator("LOG_LEVEL")
-    @classmethod
-    def _validate_log_level(cls, v: str) -> str:
-        valid = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        upper = v.upper()
-        if upper not in valid:
-            raise ValueError(f"LOG_LEVEL must be one of {valid}, got {v!r}")
-        return upper
+    log_level: str = "INFO"
+    log_file: Optional[Path] = project_root / "logs" / "preprocess.log"
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = False
 
 
-settings: Settings = Settings()
-"""Module-level singleton – import this in other modules.
+# Global settings instance
+settings = Settings()
 
-Note: If required environment variables are missing, ``Settings`` will still
-instantiate (all sensitive fields are ``Optional``), but operations that
-depend on those fields (e.g. API calls) will raise errors at runtime rather
-than at import time.  Set the variables in a ``.env`` file or your shell
-before running any data-download scripts.
-"""
+
+def get_config():
+    """Get global settings instance."""
+    return settings

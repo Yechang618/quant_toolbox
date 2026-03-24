@@ -237,7 +237,10 @@ Thumbs.db
 .vscode/
 .idea/
 
+archive/
+
 # xlsx
 *.xlsx
 # pdf
 *.pdf
+*.csv

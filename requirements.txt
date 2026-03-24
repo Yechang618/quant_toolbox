@@ -1,23 +1,19 @@
-# quant_toolbox – Python dependencies
-# Install with: pip install -r requirements.txt
+# Core data processing
+pandas>=2.0.0
+numpy>=1.24.0
+polars>=0.19.0  # Optional: faster CSV processing
 
-# ── Data downloading ────────────────────────────────────────────────────────
-ccxt>=4.3.0           # Unified crypto exchange API (REST + WebSocket via ccxt.pro)
+# Configuration & validation
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+python-dotenv>=1.0.0
 
-# ── Data processing ─────────────────────────────────────────────────────────
-pandas>=2.2.0         # DataFrame operations
-pyarrow>=15.0.0       # Parquet read/write backend
-numpy>=1.26.0         # Numerical computing
+# HTTP & API
+requests>=2.31.0
 
-# ── Configuration & validation ──────────────────────────────────────────────
-pydantic>=2.6.0       # Data validation and settings management
-pydantic-settings>=2.2.0  # BaseSettings for environment-variable loading
+# Utilities
+tqdm>=4.65.0  # Progress bars for large datasets
 
-# ── (Optional) Deep learning ────────────────────────────────────────────────
-# Uncomment the framework you intend to use:
-torch>=2.2.0
-tensorflow>=2.16.0
-scikit-learn>=1.4.0
-
-# ── Development / testing ───────────────────────────────────────────────────
-pytest>=8.0.0
+# Optional: for testing
+pytest>=7.4.0
+pytest-cov>=4.1.0

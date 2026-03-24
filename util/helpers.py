@@ -1,204 +1,97 @@
 """
-General-purpose helper utilities.
-
-Covers time processing and file I/O operations used across the project.
+util/helpers.py
+Unified helper functions for timestamp parsing and field normalization.
 """
-
-import json
-import os
-import time
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Union
-
 import pandas as pd
+from datetime import datetime, timezone
+from typing import Union, List, Dict
+import re
+
+# Field name mapping: original -> normalized
+FIELD_MAPPING = {
+    'maker/spot_executed_ts': 'maker_spot_executed_ts',
+    'taker/swap/haircut_executed_ts': 'taker_swap_haircut_executed_ts',
+    'maker/spot_client_order_id': 'maker_spot_client_order_id',
+    'taker/swap_client_order_id': 'taker_swap_client_order_id',
+    'maker/spot_anticipated_price': 'maker_spot_anticipated_price',
+    'maker/spot_executed_qty': 'maker_spot_executed_qty',
+    'maker/spot_executed_price': 'maker_spot_executed_price',
+    'taker/swap_executed_price': 'taker_swap_executed_price',
+    'taker/swap/haircut_executed_qty': 'taker_swap_haircut_executed_qty',
+    'anticipated_basis.1': 'anticipated_basis_secondary',
+    # Add more mappings as needed
+}
 
 
-# ---------------------------------------------------------------------------
-# Time helpers
-# ---------------------------------------------------------------------------
-
-
-def utc_now() -> datetime:
-    """Return the current UTC time as a timezone-aware :class:`datetime`.
-
+def parse_timestamp(ts: Union[str, int, float], unit: str = 'ms') -> pd.Timestamp:
+    """
+    Parse various timestamp formats to pandas Timestamp (UTC).
+    
+    Args:
+        ts: Timestamp in ISO8601 string, Unix ms, or Unix s
+        unit: 'ms' for milliseconds, 's' for seconds
+    
     Returns:
-        Current UTC datetime.
+        pd.Timestamp in UTC timezone
     """
-    return datetime.now(tz=timezone.utc)
+    if pd.isna(ts):
+        return pd.NaT
+    
+    if isinstance(ts, str):
+        # Handle ISO8601 format: '2025-12-27 13:00:00.222000+00:00'
+        ts = ts.strip()
+        if '+' in ts or ts.endswith('Z'):
+            ts = ts.replace('Z', '+00:00')
+        return pd.to_datetime(ts, utc=True)
+    elif isinstance(ts, (int, float)):
+        # Unix timestamp
+        if unit == 'ms':
+            return pd.to_datetime(ts, unit='ms', utc=True)
+        else:
+            return pd.to_datetime(ts, unit='s', utc=True)
+    return pd.NaT
 
 
-def ts_to_datetime(timestamp_ms: int) -> datetime:
-    """Convert a Unix timestamp in milliseconds to a UTC datetime.
-
+def normalize_columns(df: pd.DataFrame, mapping: Dict[str, str] = None) -> pd.DataFrame:
+    """
+    Normalize column names using FIELD_MAPPING.
+    
     Args:
-        timestamp_ms: Unix timestamp in milliseconds (as returned by Binance).
-
+        df: Input DataFrame
+        mapping: Optional custom mapping dict
+    
     Returns:
-        Timezone-aware UTC :class:`datetime`.
+        DataFrame with normalized column names
     """
-    return datetime.fromtimestamp(timestamp_ms / 1000.0, tz=timezone.utc)
+    if mapping is None:
+        mapping = FIELD_MAPPING
+    return df.rename(columns={k: v for k, v in mapping.items() if k in df.columns})
 
 
-def datetime_to_ts(dt: datetime) -> int:
-    """Convert a datetime to a Unix timestamp in milliseconds.
-
-    Args:
-        dt: A :class:`datetime` object (naive datetimes are treated as UTC).
-
+def extract_symbol_from_path(path: str) -> str:
+    """
+    Extract symbol from file path like '.../book_ADAUSDT_20251227.csv.gz'
+    
     Returns:
-        Unix timestamp in milliseconds.
+        Symbol without USDT suffix, e.g., 'ADA'
     """
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    return int(dt.timestamp() * 1000)
+    match = re.search(r'(?:book|trade)_([A-Z0-9]+)USDT_', path)
+    if match:
+        return match.group(1)
+    # Fallback: try to extract from filename
+    filename = path.split('/')[-1].split('\\')[-1]
+    match = re.search(r'([A-Z0-9]+)USDT', filename)
+    return match.group(1) if match else None
 
 
-def format_duration(seconds: float) -> str:
-    """Format a duration in seconds as a human-readable string.
-
-    Args:
-        seconds: Duration in seconds.
-
-    Returns:
-        String such as ``"1h 23m 45s"``.
-    """
-    seconds = int(seconds)
-    hours, rem = divmod(seconds, 3600)
-    minutes, secs = divmod(rem, 60)
-    parts: List[str] = []
-    if hours:
-        parts.append(f"{hours}h")
-    if minutes:
-        parts.append(f"{minutes}m")
-    parts.append(f"{secs}s")
-    return " ".join(parts)
+def ensure_dir(path: str):
+    """Ensure directory exists."""
+    import os
+    os.makedirs(path, exist_ok=True)
 
 
-class Timer:
-    """Simple context-manager / manual timer.
-
-    Example::
-
-        with Timer() as t:
-            do_something()
-        print(f"Elapsed: {t.elapsed:.3f}s")
-    """
-
-    def __init__(self) -> None:
-        self._start: float = 0.0
-        self.elapsed: float = 0.0
-
-    def __enter__(self) -> "Timer":
-        self._start = time.perf_counter()
-        return self
-
-    def __exit__(self, *_: Any) -> None:
-        self.elapsed = time.perf_counter() - self._start
-
-
-# ---------------------------------------------------------------------------
-# File I/O helpers
-# ---------------------------------------------------------------------------
-
-
-def ensure_dir(path: Union[str, Path]) -> Path:
-    """Create *path* (and any missing parents) if it does not exist.
-
-    Args:
-        path: Directory path to create.
-
-    Returns:
-        The resolved :class:`Path`.
-    """
-    p = Path(path)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
-
-
-def read_json(path: Union[str, Path]) -> Any:
-    """Read and parse a JSON file.
-
-    Args:
-        path: Path to the JSON file.
-
-    Returns:
-        Parsed Python object.
-    """
-    with open(path, encoding="utf-8") as fh:
-        return json.load(fh)
-
-
-def write_json(obj: Any, path: Union[str, Path], indent: int = 2) -> None:
-    """Serialise *obj* to a JSON file.
-
-    Args:
-        obj: JSON-serialisable Python object.
-        path: Destination file path.
-        indent: JSON indentation level.
-    """
-    path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(obj, fh, indent=indent)
-
-
-def iter_jsonl(path: Union[str, Path]) -> Generator[Dict[str, Any], None, None]:
-    """Iterate over records in a JSONL file one line at a time.
-
-    Args:
-        path: Path to the ``.jsonl`` file.
-
-    Yields:
-        Parsed dict for each non-empty line.
-    """
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
-            line = line.strip()
-            if line:
-                yield json.loads(line)
-
-
-def read_parquet(path: Union[str, Path]) -> pd.DataFrame:
-    """Read a Parquet file into a DataFrame.
-
-    Args:
-        path: Path to the ``.parquet`` file.
-
-    Returns:
-        :class:`pandas.DataFrame`.
-    """
-    return pd.read_parquet(path)
-
-
-def list_files(
-    directory: Union[str, Path],
-    pattern: str = "*",
-    recursive: bool = False,
-) -> List[Path]:
-    """List files in *directory* matching *pattern*.
-
-    Args:
-        directory: Directory to search.
-        pattern: Glob pattern (e.g. ``"*.jsonl"``).
-        recursive: If *True*, search sub-directories as well.
-
-    Returns:
-        Sorted list of matching :class:`Path` objects.
-    """
-    d = Path(directory)
-    glob_fn = d.rglob if recursive else d.glob
-    return sorted(p for p in glob_fn(pattern) if p.is_file())
-
-
-def get_env(key: str, default: Optional[str] = None) -> Optional[str]:
-    """Retrieve an environment variable with an optional default.
-
-    Args:
-        key: Environment variable name.
-        default: Value to return if the variable is not set.
-
-    Returns:
-        The value of the environment variable, or *default*.
-    """
-    return os.environ.get(key, default)
+def format_float(val: float, precision: int = 10) -> float:
+    """Format float to avoid excessive precision."""
+    if pd.isna(val):
+        return val
+    return round(float(val), precision)
