@@ -1,9 +1,25 @@
 {
-  "timestamp": 1774366159.9304125,
+  "timestamp": 1774402184.4065065,
   "data": {
     "DIAUSDT_spot": 0.0001,
     "DIAUSDT_swap": 0.0001,
     "PROMUSDT_spot": 0.001,
-    "PROMUSDT_swap": 0.001
+    "PROMUSDT_swap": 0.001,
+    "GLMUSDT_spot": 0.0001,
+    "GLMUSDT_swap": 1e-05,
+    "1MBABYDOGEUSDT_spot": 1e-07,
+    "1MBABYDOGEUSDT_swap": 1e-07,
+    "ZENUSDT_spot": 0.001,
+    "ZENUSDT_swap": 0.001,
+    "GPSUSDT_spot": 1e-05,
+    "GPSUSDT_swap": 1e-06,
+    "DEXEUSDT_spot": 0.001,
+    "DEXEUSDT_swap": 0.001,
+    "FXSUSDT_spot": 0.001,
+    "FXSUSDT_swap": 0.0001,
+    "SANTOSUSDT_spot": 0.001,
+    "SANTOSUSDT_swap": 0.001,
+    "1000CHEEMSUSDT_spot": 1e-06,
+    "1000CHEEMSUSDT_swap": 1e-07
   }
 }

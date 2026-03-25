@@ -292,6 +292,8 @@ def save_symbol_results(
             
             # Save to CSV
             df_out.to_csv(output_path, index=False)
+            print(f"Symbol={symbol}, columns={df_out.columns.tolist()}")
+            print(df_out.head())
             logger.info(f"✓ Saved {len(df_out)} rows for symbol={symbol}, mode={mode} → {output_path}")
 
 
