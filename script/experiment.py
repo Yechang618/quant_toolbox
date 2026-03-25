@@ -19,7 +19,6 @@ combined_df = pd.concat(df_list, ignore_index=True)
 print(f"Combined {len(csv_files)} files")
 print(f"Total rows: {len(combined_df)}")
 
-# df = pd.read_csv('./dataset/preprocessed/mode0/sample_DIAUSDT.csv')
 print(combined_df.info())
 
 selected_cols = ['gain_vs_threshold', 'basis_slippage', 
@@ -88,26 +87,25 @@ feature_cols = ['threshold', 'basis_expected',
 label_cols = ['gain_vs_threshold']#, 'basis_slippage']
 print(f"Selected {len(feature_cols)} features and {len(label_cols)} labels")
 
-# print(df[['gain_vs_threshold', 'basis_slippage', 'execute_delay_ms']].describe())
-# print(combined_df['exec_ts_utc'].head())
-
-##
-label_idx = 0
-# df_sample = df.iloc[:10000,:].copy()
+## Prepare data for modeling
 df_sample = df.copy()
 X = df_sample[feature_cols].values
 
 # Generate labels based on the selected label column
-# y = df_sample['gain_vs_threshold'].values / (df_sample['basis_expected'].values + 1e-8)  # Normalize by basis_expected
-# y = df_sample['basis_slippage'].values  
 y = df_sample['gain_vs_threshold'].values  
 
 
 y = np.squeeze(y)  # Convert to 1D array if it's a single column
-from sklearn.model_selection import train_test_split
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# from sklearn.model_selection import train_test_split
+test_size = 0.2
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
+y_train, y_test = y[:int(len(y) * (1 - test_size))], y[int(len(y) * (1 - test_size)):]
+
 print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")  
 print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+
+# Normalize features and labels
 X_train_mean = X_train.mean(axis=0)
 X_train_std = X_train.std(axis=0)
 y_train_mean = y_train.mean()
@@ -116,7 +114,6 @@ X_train = (X_train - X_train_mean) / (X_train_std + 1e-8)
 y_train = (y_train - y_train_mean) / (y_train_std + 1e-8)
 
 X_test = (X_test - X_train_mean) / (X_train_std + 1e-8)
-# y_test = (y_test - y_train_mean) / (y_train_std + 1e-8)
 
 # Train a lightGBM model
 # import lightgbm as lgb
@@ -179,7 +176,7 @@ axes[1].set_xlim([-1, X_train.shape[1]])
 # axes[2].set_xticks(range(X_train.shape[1]))
 # axes[2].set_xticklabels([feature_cols[i] for i in indices_lgb], rotation=90)
 # axes[2].set_xlim([-1, X_train.shape[1]])   
-
+plt.savefig('feature_importance.png', bbox_inches='tight')
 plt.tight_layout()
 plt.show()  
 fig2, axes2 = plt.subplots(1, 2, figsize=(18, 6))
@@ -199,5 +196,6 @@ axes2[1].set_xlabel('True Values')
 axes2[1].set_ylabel('Predicted Values')
 axes2[1].set_title('Linear Regression: True vs Predicted Values')
 axes2[1].legend()
+plt.savefig('true_vs_predicted.png', bbox_inches='tight')
 plt.tight_layout()
 plt.show()
