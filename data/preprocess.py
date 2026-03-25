@@ -344,7 +344,12 @@ def run_pipeline(
     symbols_completed = 0
     
     # === MODIFIED: Process and save per symbol ===
+    processed_symbols = ['1MBABYDOGEUSDT', 'DEXEUSDT','DIAUSDT','FXSUSDT','GLMUSDT',
+                         'GPSUSDT', 'PROMUSDT', 'SANTOSUSDT', 'ZENUSDT']
     for symbol_idx, symbol in enumerate(unique_symbols, 1):
+        if symbol in processed_symbols:
+            logger.info(f"Skipping already processed symbol: {symbol}")
+            continue
         logger.info(f"[{symbol_idx}/{len(unique_symbols)}] Processing symbol: {symbol}")
         
         # Initialize results for this symbol

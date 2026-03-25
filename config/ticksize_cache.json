@@ -1,5 +1,5 @@
 {
-  "timestamp": 1774402184.4065065,
+  "timestamp": 1774423069.3197238,
   "data": {
     "DIAUSDT_spot": 0.0001,
     "DIAUSDT_swap": 0.0001,
@@ -20,6 +20,22 @@
     "SANTOSUSDT_spot": 0.001,
     "SANTOSUSDT_swap": 0.001,
     "1000CHEEMSUSDT_spot": 1e-06,
-    "1000CHEEMSUSDT_swap": 1e-07
+    "1000CHEEMSUSDT_swap": 1e-07,
+    "PROVEUSDT_spot": 0.0001,
+    "PROVEUSDT_swap": 0.0001,
+    "FORMUSDT_spot": 0.0001,
+    "FORMUSDT_swap": 0.0001,
+    "ORDIUSDT_spot": 0.001,
+    "ORDIUSDT_swap": 0.001,
+    "XVGUSDT_spot": 1e-06,
+    "XVGUSDT_swap": 1e-06,
+    "HUMAUSDT_spot": 1e-05,
+    "HUMAUSDT_swap": 1e-06,
+    "1000CATUSDT_spot": 1e-05,
+    "1000CATUSDT_swap": 1e-06,
+    "PHAUSDT_spot": 0.0001,
+    "PHAUSDT_swap": 1e-05,
+    "CHZUSDT_spot": 1e-05,
+    "CHZUSDT_swap": 1e-05
   }
 }
