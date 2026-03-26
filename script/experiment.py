@@ -60,23 +60,23 @@ print(f"50th percentile of execute_delay_ms: {upper_limit_delay} ms")
 filtered_df = combined_df[combined_df['execute_delay_ms'] <= upper_limit_delay]
 
 # Filter out outliers based on the 10th and 90th percentiles of gain_vs_threshold
-lower_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.30)
-upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.70)
-print(f"30th percentile of gain_vs_threshold: {lower_limit_gain}")
-print(f"70th percentile of gain_vs_threshold: {upper_limit_gain}")
+lower_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.05)
+upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.95)
+print(f"5th percentile of gain_vs_threshold: {lower_limit_gain}")
+print(f"95th percentile of gain_vs_threshold: {upper_limit_gain}")
 filtered_df = filtered_df[(filtered_df['gain_vs_threshold'] >= lower_limit_gain) & (filtered_df['gain_vs_threshold'] <= upper_limit_gain)]
 
 # Select only the relevant columns and drop rows with missing values
 df = filtered_df[selected_cols].dropna()
 feature_cols = ['threshold', 'basis_expected', 
                 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
-                'spot_midprice_open', #'spot_midprice_close', 'spot_midprice_high', 
-                # 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                # 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                # 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                # 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
-                # 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                # 'basis_bid_low', 
+                'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
+                 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
+                 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
+                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
+                 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
+                 'basis_bid_low', 
                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
                 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
                 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
