@@ -11,10 +11,10 @@ warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.va
 
 TOLERENCE = 1e-12
 
-mode = 2
+mode = 0
 # delay_exec = ''
 delay_exec = '_2'
-normalize_X = 1
+normalize_X = 0
 operation = 'open2'
 
 # Define the folder path
@@ -245,7 +245,7 @@ print(f"XGBoost Regressor - MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
 
 # Train a lightGBM model
 import lightgbm as lgb
-model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=5, random_state=42)
+model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=10, random_state=42)
 model_lgb.fit(X_train, y_train)
 y_pred_lgb = model_lgb.predict(X_test)
 y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
@@ -257,7 +257,7 @@ print(f"LightGBM Regressor - MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
 
 # Train a Random Forest Regressor
 from sklearn.ensemble import RandomForestRegressor
-model_rf = RandomForestRegressor(n_estimators=1000, max_depth=5, random_state=42)
+model_rf = RandomForestRegressor(n_estimators=500, max_depth=5, random_state=42)
 model_rf.fit(X_train, y_train)
 y_pred_rf = model_rf.predict(X_test)
 y_pred_rf = y_pred_rf * y_train_std + y_train_mean  # Denormalize predictions
