@@ -52,7 +52,6 @@ def extract_window_features(
             'swap_volatility_ticks', 'swap_price_return_60s', 'swap_trade_volume_60s', 'swap_trade_count_60s', 'swap_buy_trade_ratio',
             'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 'basis_bid_low',
             'spot_buy_trade_ratio', 'execute_delay_ms', 'threshold', 'basis_expected', 'basis_executed', 'spot_basis_slippage_ticks'
-
         ]}
     
     # === Price & Spread Features ===
@@ -210,6 +209,10 @@ def prepare_trade_record_features(record: pd.Series) -> Dict:
     anticipated = record.get('anticipated_basis')
     executed = record.get('executed_basis')
     
+    # gain_vs_threshold = executed - threshold (open)
+    # Factor = basis_mean - threshold (open)
+    # gain_vs_thres - Factor = executed - basis_mean
+
     if pd.notna(anticipated) and pd.notna(executed):
         result['basis_slippage'] = executed - anticipated
     else:
