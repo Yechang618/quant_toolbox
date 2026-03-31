@@ -10,10 +10,14 @@ from sklearn.inspection import permutation_importance
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
 TOLERENCE = 1e-12
-# Define the folder path
+
 mode = 2
 # delay_exec = ''
 delay_exec = '_2'
+normalize_X = 1
+operation = 'open2'
+
+# Define the folder path
 folder_path = f'dataset/preprocessed{delay_exec}/mode{mode}/'
 # folder_path = 'dataset/preprocessed/mode2/'
 
@@ -27,7 +31,7 @@ print(f"Combined {len(csv_files)} files")
 print(f"Total rows: {len(combined_df)}")
 print(combined_df.info())
 
-selected_cols = ['gain_vs_threshold', 'basis_slippage',
+selected_cols = ['gain_vs_threshold', 'basis_slippage', 'operation',
 # 'symbol', 'trade_mode', 'exec_ts_utc',
 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts',
 'threshold', 'basis_expected', 'basis_executed',
@@ -72,7 +76,8 @@ upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.95)
 print(f"5th percentile of gain_vs_threshold: {lower_limit_gain}")
 print(f"95th percentile of gain_vs_threshold: {upper_limit_gain}")
 filtered_df = filtered_df[(filtered_df['gain_vs_threshold'] >= lower_limit_gain) & (filtered_df['gain_vs_threshold'] <= upper_limit_gain)]
-
+filtered_df = filtered_df[(filtered_df['operation'] == operation)]
+print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df)}")
 # Select only the relevant columns and drop rows with missing values
 df = filtered_df[selected_cols].dropna()
 
@@ -104,15 +109,20 @@ feature_cols.append('basis_ask_k_volatility')
 feature_cols.append('basis_bid_k_volatility')
 df['constant_feature'] = 1.0
 feature_cols.append('constant_feature')
+basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
+df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
+feature_cols.append('basis_mid_to_thres')
+basis_close_mid = (df['basis_ask_close'] + df['basis_bid_close']) / 2
+df['basis_close_to_thres'] = (basis_close_mid - df['threshold'])
+feature_cols.append('basis_close_to_thres')
 
 # Prepare data for modeling
 df_sample = df.copy()
 X = df_sample[feature_cols].values
 
 # Generate labels based on the selected label column
-# label_name = 'gain_vs_threshold'
-label_name = 'basis_slippage'
-# label_name = 'basis_slippage_rate'
+label_name = 'gain_vs_threshold'
+# label_name = 'basis_slippage'
 y = df_sample[label_name].values
 y = np.squeeze(y)  # Convert to 1D array if it's a single column
 
@@ -126,10 +136,16 @@ print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
 print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
 
 # Normalize features and labels
-X_train_mean = X_train.mean(axis=0)
-X_train_std = X_train.std(axis=0)
-y_train_mean = y_train.mean()
-y_train_std = y_train.std()
+if normalize_X == 1:
+    X_train_mean = X_train.mean(axis=0)
+    X_train_std = X_train.std(axis=0)
+    y_train_mean = y_train.mean()
+    y_train_std = y_train.std()
+else:
+    X_train_mean = np.zeros(X_train.shape[1])
+    X_train_std = np.ones(X_train.shape[1])
+    y_train_mean = 0.0
+    y_train_std = 1.0
 
 X_train = (X_train - X_train_mean) / (X_train_std + TOLERENCE)
 y_train = (y_train - y_train_mean) / (y_train_std + TOLERENCE)
@@ -315,7 +331,7 @@ axes[2].set_xticklabels([feature_cols[i] for i in indices_lgb], rotation=90)
 axes[2].set_xlim([-1, X_train.shape[1]])
 
 plt.tight_layout()
-plt.savefig(f'feature_imp_label_{label_name}_nFts{X_train.shape[1]}{delay_exec}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'feature_imp_label_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
 
 fig2, axes2 = plt.subplots(5, 2, figsize=(18, 16))
@@ -409,5 +425,5 @@ axes2[4,1].grid(True)
 axes2[4,1].legend()
 
 plt.tight_layout()
-plt.savefig(f'true_vs_pred_{label_name}_nFts{X_train.shape[1]}{delay_exec}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'true_vs_pred_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
