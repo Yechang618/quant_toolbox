@@ -9,6 +9,14 @@ from sklearn.inspection import permutation_importance
 
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import xgboost as xgb
+import lightgbm as lgb
+from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+
 TOLERENCE = 1e-12
 
 mode = 0
@@ -82,14 +90,14 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 df = filtered_df[selected_cols].dropna()
 
 feature_cols = ['threshold', 'basis_expected', 
-                'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
-                'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
-                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                 'basis_bid_low', 
+                # 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
+                # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
+                #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
+                #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
+                #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
+                #  'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
+                #  'basis_bid_low', 
                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
                 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
                 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
@@ -156,140 +164,154 @@ X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
 X_train = np.asarray(X_train)
 X_test = np.asarray(X_test)
 
-# ==================== Train a DEEPER CNN model ====================
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
+results = {}
+models = ['Random Forest Regressor', 'Linear Regression', 'LightGBM Regressor', 'XGBoost Regressor', 'CNN Regressor']
 
-# 更深的 CNN 结构 - 输入维度 (n_sample, n_feature)
-# 内部转换为 (n_sample, n_feature, 1) 用于 Conv1D
-n_features = X_train.shape[1]
+if 'CNN Regressor' in models:
+    results['CNN Regressor'] = {}
+    # ==================== Train a DEEPER CNN model ====================
+    # 更深的 CNN 结构 - 输入维度 (n_sample, n_feature)
+    # 内部转换为 (n_sample, n_feature, 1) 用于 Conv1D
+    n_features = X_train.shape[1]
 
-model_cnn = keras.Sequential([
-    # Input layer - 输入形状 (n_features, 1)
-    layers.Input(shape=(n_features, 1)),
-    
-    # 第一组卷积块
-    layers.Conv1D(64, 3, activation='relu', padding='same'),
-    layers.BatchNormalization(),
-    layers.Dropout(0.3),
-    
-    # 第二组卷积块
-    layers.Conv1D(128, 3, activation='relu', padding='same'),
-    layers.BatchNormalization(),
-    layers.Dropout(0.3),
-    
-    # 第三组卷积块
-    layers.Conv1D(256, 3, activation='relu', padding='same'),
-    layers.BatchNormalization(),
-    layers.Dropout(0.3),
-    
-    # 第四组卷积块
-    layers.Conv1D(128, 3, activation='relu', padding='same'),
-    layers.BatchNormalization(),
-    layers.Dropout(0.3),
-    
-    # 全局池化
-    layers.GlobalAveragePooling1D(),
-    
-    # 全连接层
-    layers.Dense(64, activation='relu'),
-    layers.BatchNormalization(),
-    layers.Dropout(0.5),
-    
-    layers.Dense(32, activation='relu'),
-    layers.Dropout(0.3),
-    
-    # 输出层
-    layers.Dense(1)
-])
+    model_cnn = keras.Sequential([
+        # Input layer - 输入形状 (n_features, 1)
+        layers.Input(shape=(n_features, 1)),
+        
+        # 第一组卷积块
+        layers.Conv1D(64, 3, activation='relu', padding='same'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+        
+        # 第二组卷积块
+        layers.Conv1D(128, 3, activation='relu', padding='same'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+        
+        # 第三组卷积块
+        layers.Conv1D(256, 3, activation='relu', padding='same'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+        
+        # 第四组卷积块
+        layers.Conv1D(128, 3, activation='relu', padding='same'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.3),
+        
+        # 全局池化
+        layers.GlobalAveragePooling1D(),
+        
+        # 全连接层
+        layers.Dense(64, activation='relu'),
+        layers.BatchNormalization(),
+        layers.Dropout(0.5),
+        
+        layers.Dense(32, activation='relu'),
+        layers.Dropout(0.3),
+        
+        # 输出层
+        layers.Dense(1)
+    ])
 
-model_cnn.compile(optimizer='adam', loss='mse', metrics=['mae'])
-model_cnn.summary()
+    model_cnn.compile(optimizer='adam', loss='mse', metrics=['mae'])
+    model_cnn.summary()
 
-# 训练模型 - 输入需要扩展为 3D (n_sample, n_features, 1)
-history = model_cnn.fit(
-    X_train[..., np.newaxis], 
-    y_train, 
-    epochs=50, 
-    batch_size=256, 
-    validation_split=0.1,
-    callbacks=[
-        keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
-        keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
-    ]
-)
+    # 训练模型 - 输入需要扩展为 3D (n_sample, n_features, 1)
+    history = model_cnn.fit(
+        X_train[..., np.newaxis], 
+        y_train, 
+        epochs=50, 
+        batch_size=256, 
+        validation_split=0.1,
+        callbacks=[
+            keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
+            keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
+        ]
+    )
 
-# 预测
-y_pred_cnn_norm = model_cnn.predict(X_test[..., np.newaxis]).flatten()
-y_pred_cnn = y_pred_cnn_norm * y_train_std + y_train_mean  # Denormalize predictions
+    # 预测
+    y_pred_cnn_norm = model_cnn.predict(X_test[..., np.newaxis]).flatten()
+    y_pred_cnn = y_pred_cnn_norm * y_train_std + y_train_mean  # Denormalize predictions
 
-y_pred_cnn_train_norm = model_cnn.predict(X_train[..., np.newaxis]).flatten()
-y_pred_cnn_train = y_pred_cnn_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
+    y_pred_cnn_train_norm = model_cnn.predict(X_train[..., np.newaxis]).flatten()
+    y_pred_cnn_train = y_pred_cnn_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
 
-mse_cnn = mean_squared_error(y_test, y_pred_cnn)
-r2_cnn = r2_score(y_test, y_pred_cnn)
-print(f"CNN - MSE: {mse_cnn:.4f}, R2: {r2_cnn:.4f}")
+    mse_cnn = mean_squared_error(y_test, y_pred_cnn)
+    r2_cnn = r2_score(y_test, y_pred_cnn)
+    print(f"CNN - MSE: {mse_cnn:.4f}, R2: {r2_cnn:.4f}")
+    results['CNN Regressor']['MSE'] = mse_cnn
+    results['CNN Regressor']['R2'] = r2_cnn
 
-# Train a XGBoost model
-import xgboost as xgb
-model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
-model_xgb.fit(X_train, y_train)
-y_pred_xgb = model_xgb.predict(X_test)
-y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+if 'XGBoost Regressor' in models:
+    results['XGBoost Regressor'] = {}
+    # Train a XGBoost model
+    model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
+    model_xgb.fit(X_train, y_train)
+    y_pred_xgb = model_xgb.predict(X_test)
+    y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-mse_xgb = mean_squared_error(y_test, y_pred_xgb)
-r2_xgb = r2_score(y_test, y_pred_xgb)
-print(f"XGBoost Regressor - MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
+    mse_xgb = mean_squared_error(y_test, y_pred_xgb)
+    r2_xgb = r2_score(y_test, y_pred_xgb)
+    importance_xgb = model_xgb.feature_importances_
+    indices_xgb = np.argsort(importance_xgb)[::-1]
+    print(f"XGBoost Regressor - MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
+    results['XGBoost Regressor']['MSE'] = mse_xgb
+    results['XGBoost Regressor']['R2'] = r2_xgb
 
-# Train a lightGBM model
-import lightgbm as lgb
-model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=10, random_state=42)
-model_lgb.fit(X_train, y_train)
-y_pred_lgb = model_lgb.predict(X_test)
-y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+if 'LightGBM Regressor' in models:
+    # Train a lightGBM model
+    model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=10, random_state=42)
+    model_lgb.fit(X_train, y_train)
+    y_pred_lgb = model_lgb.predict(X_test)
+    y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-mse_lgb = mean_squared_error(y_test, y_pred_lgb)
-r2_lgb = r2_score(y_test, y_pred_lgb)
-print(f"LightGBM Regressor - MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
+    mse_lgb = mean_squared_error(y_test, y_pred_lgb)
+    r2_lgb = r2_score(y_test, y_pred_lgb)
+    print(f"LightGBM Regressor - MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
+    results['LightGBM Regressor'] = {}
+    results['LightGBM Regressor']['MSE'] = mse_lgb
+    results['LightGBM Regressor']['R2'] = r2_lgb
 
-# Train a Random Forest Regressor
-from sklearn.ensemble import RandomForestRegressor
-model_rf = RandomForestRegressor(n_estimators=500, max_depth=5, random_state=42)
-model_rf.fit(X_train, y_train)
-y_pred_rf = model_rf.predict(X_test)
-y_pred_rf = y_pred_rf * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_rf_train = model_rf.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-mse_rf = mean_squared_error(y_test, y_pred_rf)
-r2_rf = r2_score(y_test, y_pred_rf)
-print(f"Random Forest Regressor - MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
+if 'Random Forest Regressor' in models:
+    results['Random Forest Regressor'] = {}
+    # Train a Random Forest Regressor
+    model_rf = RandomForestRegressor(n_estimators=500, max_depth=5, random_state=42)
+    model_rf.fit(X_train, y_train)
+    y_pred_rf = model_rf.predict(X_test)
+    y_pred_rf = y_pred_rf * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_rf_train = model_rf.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-# Feature importance plot
-importances = model_rf.feature_importances_
-indices = np.argsort(importances)[::-1]
+    mse_rf = mean_squared_error(y_test, y_pred_rf)
+    r2_rf = r2_score(y_test, y_pred_rf)
+    print(f"Random Forest Regressor - MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
 
-# Train a linear regression model
-from sklearn.linear_model import LinearRegression
-model_LR = LinearRegression()
-model_LR.fit(X_train, y_train)
-y_pred_LR = model_LR.predict(X_test)
-y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+    # Feature importance plot
+    importances = model_rf.feature_importances_
+    indices = np.argsort(importances)[::-1]
+    results['Random Forest Regressor']['MSE'] = mse_rf
+    results['Random Forest Regressor']['R2'] = r2_rf
 
-mse_LR = mean_squared_error(y_test, y_pred_LR)
-r2_LR = r2_score(y_test, y_pred_LR)
-print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
+if 'Linear Regression' in models:
+    results['Linear Regression'] = {}
+    # Train a linear regression model
+    model_LR = LinearRegression()
+    model_LR.fit(X_train, y_train)
+    y_pred_LR = model_LR.predict(X_test)
+    y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-# Feature importance for linear regression (absolute value of coefficients)
-print(model_LR.coef_.shape)
-coef_importance = np.abs(model_LR.coef_)
-# coef_importance = model_LR.coef_
-indices_lr = np.argsort(coef_importance)[::-1]
-importance_xgb = model_xgb.feature_importances_
-indices_xgb = np.argsort(importance_xgb)[::-1]
+    mse_LR = mean_squared_error(y_test, y_pred_LR)
+    r2_LR = r2_score(y_test, y_pred_LR)
+    print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
+
+    # Feature importance for linear regression (absolute value of coefficients)
+    print(model_LR.coef_.shape)
+    coef_importance = np.abs(model_LR.coef_)
+    indices_lr = np.argsort(coef_importance)[::-1]
+
 
 fig, axes = plt.subplots(1, 4, figsize=(24, 6))
 
