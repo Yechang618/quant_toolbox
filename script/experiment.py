@@ -12,7 +12,9 @@ warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.va
 TOLERENCE = 1e-12
 # Define the folder path
 mode = 2
-folder_path = f'dataset/preprocessed/mode{mode}/'
+# delay_exec = ''
+delay_exec = '_2'
+folder_path = f'dataset/preprocessed{delay_exec}/mode{mode}/'
 # folder_path = 'dataset/preprocessed/mode2/'
 
 # Get all CSV files in the folder
@@ -137,28 +139,6 @@ X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
 # Ensure X_train/X_test are pure numpy arrays to avoid LightGBM feature name warnings
 X_train = np.asarray(X_train)
 X_test = np.asarray(X_test)
-
-# Train a CNN model
-# import tensorflow as tf
-# from tensorflow import keras
-# from tensorflow.keras import layers
-
-# model_cnn = keras.Sequential([
-#     layers.Input(shape=(X_train.shape[1], 1)),
-#     layers.Conv1D(64, 3, activation='relu'),
-#     layers.GlobalAveragePooling1D(),
-#     layers.Dense(1)
-# ])
-# model_cnn.compile(optimizer='adam', loss='mse')
-# model_cnn.fit(X_train[..., np.newaxis], y_train, epochs=100, batch_size=4096, validation_split=0.1)
-
-# y_pred_cnn = model_cnn.predict(X_test[..., np.newaxis]).flatten()
-# y_pred_cnn = y_pred_cnn * y_train_std + y_train_mean  # Denormalize predictions
-# y_pred_cnn_train = model_cnn.predict(X_train[..., np.newaxis]).flatten()
-# y_pred_cnn_train = y_pred_cnn_train * y_train_std + y_train_mean  # Denormalize train predictions
-
-# mse_cnn = mean_squared_error(y_test, y_pred_cnn)
-# print(f"CNN - MSE: {mse_cnn:.4f}")
 
 # ==================== Train a DEEPER CNN model ====================
 import tensorflow as tf
@@ -334,26 +314,8 @@ axes[2].set_xticks(range(X_train.shape[1]))
 axes[2].set_xticklabels([feature_cols[i] for i in indices_lgb], rotation=90)
 axes[2].set_xlim([-1, X_train.shape[1]])
 
-# Plot feature importance for CNN (using permutation importance)
-# Fix: Use 2D X_test for permutation_importance, wrap model predict to handle 3D input
-# Fix: Normalize y_test for scoring consistency with model output
-# y_test_norm = (y_test - y_train_mean) / (y_train_std + 1e-8)
-
-# def cnn_predict_wrapper(X):
-#     return model_cnn.predict(X[..., np.newaxis]).flatten()
-
-# perm_importance_cnn = permutation_importance(cnn_predict_wrapper, X_test, y_test_norm, n_repeats=10, random_state=42)
-# indices_cnn = np.argsort(perm_importance_cnn.importances_mean)[::-1]
-# axes[4].set_title("CNN Permutation Importances")
-# axes[4].bar(range(X_train.shape[1]), perm_importance_cnn.importances_mean[indices_cnn], align="center")
-# axes[4].set_xticks(range(X_train.shape[1]))
-# axes[4].set_xticklabels([feature_cols[i] for i in indices_cnn], rotation=90)
-# axes[4].set_xlim([-1, X_train.shape[1]])
-# axes[4].set_ylabel("Importance")
-# axes[4].set_xlabel("Feature")
-
 plt.tight_layout()
-plt.savefig(f'feature_importance_label_{label_name}_nFeatures{X_train.shape[1]}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'feature_imp_label_{label_name}_nFts{X_train.shape[1]}{delay_exec}_mode{mode}.png', bbox_inches='tight')
 plt.show()
 
 fig2, axes2 = plt.subplots(5, 2, figsize=(18, 16))
@@ -447,5 +409,5 @@ axes2[4,1].grid(True)
 axes2[4,1].legend()
 
 plt.tight_layout()
-plt.savefig(f'true_vs_predicted_label_{label_name}_nFeatures{X_train.shape[1]}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'true_vs_pred_{label_name}_nFts{X_train.shape[1]}{delay_exec}_mode{mode}.png', bbox_inches='tight')
 plt.show()
