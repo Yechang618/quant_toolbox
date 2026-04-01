@@ -32,7 +32,7 @@ delay_exec = ''
 normalize_X = 1
 # operation = 'open2'
 operation = 'close2'
-delay_precentile = 80
+delay_precentile = 30
 beta = 1
 symbol = 'all'
 symbol = 'ZENUSDT'
@@ -423,7 +423,7 @@ nplot_1 = len(models_plot_imp)
 fig, axes = plt.subplots(1, nplot_1, figsize=(24, 6))
 for i in range(nplot_1):
     axes[i].grid(True)
-    axes[i].set_title(f"{models_plot_imp[i]} Feature Imp. ({label_name}),\n MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
+    axes[i].set_title(f"{models_plot_imp[i]} Feature Imp. (sym: {symbol}, {label_name}),\n MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
     # print(f"X_train shape: {X_train.shape}, importance shape: {results[models_plot_imp[i]]['importance'].shape}")
     axes[i].bar(range(X_train.shape[1]), results[models_plot_imp[i]]['importance'][results[models_plot_imp[i]]['indices']], align="center")
     axes[i].set_xticks(range(X_train.shape[1]))
@@ -448,14 +448,14 @@ for i, model_name in enumerate(models):
     axes2[i,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
     axes2[i,0].set_xlabel('True Values')
     axes2[i,0].set_ylabel('Predicted Values')
-    axes2[i,0].set_title(f'{model_name}: True vs Predicted Values ({label_name})')
+    axes2[i,0].set_title(f'{model_name}: True vs Pred (sym: {symbol}, {label_name})')
     axes2[i,0].grid(True)
     axes2[i,0].legend()
     axes2[i,1].scatter(y_train_denorm, y_pred_train, alpha=0.5, label=f'{model_name} (Train)', color='orange')
     axes2[i,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
     axes2[i,1].set_xlabel('True Values (Train)')
     axes2[i,1].set_ylabel('Predicted Values')
-    axes2[i,1].set_title(f'{model_name}: True vs Predicted Values (Train) ({label_name})')
+    axes2[i,1].set_title(f'{model_name}: True vs Pred (Train) (sym: {symbol}, {label_name})')
     axes2[i,1].grid(True)
     axes2[i,1].legend()
 
