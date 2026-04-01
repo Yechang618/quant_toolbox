@@ -27,11 +27,15 @@ models = ['OLS Regression', 'Linear Regression',
 TOLERENCE = 1e-12
 
 mode = 0
-# delay_exec = ''
-delay_exec = '_2'
-normalize_X = 0
+delay_exec = ''
+# delay_exec = '_2'
+normalize_X = 1
 # operation = 'open2'
 operation = 'close2'
+delay_precentile = 80
+beta = 1
+symbol = 'all'
+symbol = 'ZENUSDT'
 
 ######### label
 label_name = 'gain_vs_threshold' # basis_executed - threshold
@@ -54,7 +58,7 @@ print(f"Total rows: {len(combined_df)}")
 print(combined_df.info())
 
 selected_cols = ['gain_vs_threshold', 'basis_slippage', 'operation',
-# 'symbol', 'trade_mode', 'exec_ts_utc',
+'symbol', 'trade_mode', 'exec_ts_utc',
 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts',
 'threshold', 'basis_expected', 'basis_executed',
 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean',
@@ -88,8 +92,8 @@ combined_df = combined_df.sort_values('exec_ts_utc')
 # print(combined_df['execute_delay_ms'].describe())
 
 # Filter out outliers based on the 95th percentile of execute_delay_ms
-upper_limit_delay = combined_df['execute_delay_ms'].quantile(0.80)
-print(f"80th percentile of execute_delay_ms: {upper_limit_delay} ms")
+upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_precentile/100)
+print(f"{delay_precentile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
 filtered_df = combined_df[combined_df['execute_delay_ms'] <= upper_limit_delay]
 
 # Filter out outliers based on the 10th and 90th percentiles of gain_vs_threshold
@@ -99,30 +103,32 @@ print(f"5th percentile of gain_vs_threshold: {lower_limit_gain}")
 print(f"95th percentile of gain_vs_threshold: {upper_limit_gain}")
 filtered_df = filtered_df[(filtered_df['gain_vs_threshold'] >= lower_limit_gain) & (filtered_df['gain_vs_threshold'] <= upper_limit_gain)]
 filtered_df = filtered_df[(filtered_df['operation'] == operation)]
+if symbol != 'all':
+    filtered_df = filtered_df[filtered_df['symbol'] == symbol]
 print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df)}")
 # Select only the relevant columns and drop rows with missing values
 df = filtered_df[selected_cols].dropna()
 
-feature_cols = [#'threshold', 
-                # 'basis_expected', 
-                'basis_executed',
+feature_cols = ['threshold', 
+                'basis_expected', 
                 # 'spot_midprice_mean', 
-                # 'spot_midprice_std', 
+                'spot_midprice_std', 
                 # 'spot_spread_mean', 
                 # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
                 #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
                 #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
                 #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                #  'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                #  'basis_bid_open', 
+                # 'basis_ask_close', 'basis_bid_close', 
                 #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
                 #  'basis_bid_low', 
-                # 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
+                'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
                 # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
                 # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
-                # 'spot_price_return_60s', 'swap_price_return_60s', 
+                'spot_price_return_60s', 'swap_price_return_60s', 
                 'spot_trade_volume_60s', 
                 'spot_trade_count_60s', 
-                # 'spot_buy_trade_ratio', 
+                'spot_buy_trade_ratio', 
                 'swap_trade_volume_60s', 
                 'swap_trade_count_60s', 
                 # 'basis_slippage_rate'
@@ -140,12 +146,16 @@ df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold'])
 basis_close_mid = (df['basis_ask_close'] + df['basis_bid_close']) / 2
 df['basis_close_to_thres'] = (basis_close_mid - df['threshold'])
 df['basis_expected_to_thres'] = (df['basis_expected'] - df['threshold'])
+df['basis_ask_close_to_thres'] = (df['basis_ask_close'] - df['threshold'])
+df['basis_bid_close_to_thres'] = (df['basis_bid_close'] - df['threshold'])
 
 # feature_cols.append('basis_expected_to_thres')
 # feature_cols.append('basis_ask_k_volatility')
 # feature_cols.append('basis_bid_k_volatility')
 # feature_cols.append('basis_close_to_thres')
 # feature_cols.append('basis_mid_to_thres')
+# feature_cols.append('basis_ask_close_to_thres')
+# feature_cols.append('basis_bid_close_to_thres')
 
 df['const.'] = 1.0
 feature_cols.append('const.')
@@ -159,34 +169,43 @@ X = df_sample[feature_cols].values
 
 # Generate labels based on the selected label column
 
-y = df_sample[label_name].values
-y = np.squeeze(y)  # Convert to 1D array if it's a single column
+Y = df_sample[[label_name, 'gain_vs_threshold']].values
+# y = np.squeeze(y)  # Convert to 1D array if it's a single column
 
 # Fix: Remove redundant train_test_split and use consistent test_size
 test_size = 0.2  # Changed from 0.1 to 0.2 for better evaluation
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42) # Removed redundant line
 X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
-y_train, y_test = y[:int(len(y) * (1 - test_size))], y[int(len(y) * (1 - test_size)):]
+Y_train, Y_test = Y[:int(len(Y) * (1 - test_size))], Y[int(len(Y) * (1 - test_size)):]
 
 print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-print(f"X_train shape: {X_train.shape}, y_train shape: {y_train.shape}")
+print(f"X_train shape: {X_train.shape}, Y_train shape: {Y_train.shape}")
 
+x_thres = X_test[:, feature_cols.index('threshold')]
 # Normalize features and labels
 if normalize_X == 1:
     X_train_mean = X_train.mean(axis=0)
     X_train_std = X_train.std(axis=0)
-    y_train_mean = y_train.mean()
-    y_train_std = y_train.std()
+    Y_train_mean = Y_train.mean(axis=0)
+    Y_train_std = Y_train.std(axis=0)
+    y_train_mean = Y_train[:, 0].mean()
+    y_train_std = Y_train[:, 0].std()
 else:
     X_train_mean = np.zeros(X_train.shape[1])
     X_train_std = np.ones(X_train.shape[1])
-    y_train_mean = 0.0
-    y_train_std = 1.0
+    Y_train_mean = np.zeros(Y_train.shape[1])
+    Y_train_std = np.ones(Y_train.shape[1])
+    y_train_mean = 0
+    y_train_std = 1
 
 X_train = (X_train - X_train_mean) / (X_train_std + TOLERENCE)
-y_train = (y_train - y_train_mean) / (y_train_std + TOLERENCE)
+Y_train = (Y_train - Y_train_mean) / (Y_train_std + TOLERENCE)
 X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
-# Note: y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
+# Note: Y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
+y_test = Y_test[:, 0]  # Assuming the first column is the main label for evaluation
+y_train = Y_train[:, 0]  # Assuming the first column is the main label
+label_test = Y_test[:, 1]  # gain_vs_threshold for label prediction plot
+label_train = Y_train[:, 1]  # gain_vs_threshold for label prediction plot
 
 # Ensure X_train/X_test are pure numpy arrays to avoid LightGBM feature name warnings
 X_train = np.asarray(X_train)
@@ -201,13 +220,14 @@ if 'OLS Regression' in models:
     # X_test_sm = sm.add_constant(X_test)
     X_test_sm = X_test.copy()  # Ensure it's a pure numpy array
     y_pred_ols_norm = model_ols.predict(X_test_sm)
-    y_pred_ols = y_pred_ols_norm * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_ols = y_pred_ols_norm * y_train_std + y_train_mean# Denormalize predictions
     y_pred_ols_train_norm = model_ols.predict(X_train_sm)
     y_pred_ols_train = y_pred_ols_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
+    label_pred = y_pred_ols - beta * x_thres  
 
     print(model_ols.summary())
-    importance_ols = np.abs(model_ols.params[0:])  # Exclude intercept
-    indices_ols = np.argsort(importance_ols)[::-1]
+    importance_ols = model_ols.params[0:]  # Exclude intercept
+    indices_ols = np.argsort(np.abs(importance_ols))[::-1]
     mse_ols = mean_squared_error(y_test, y_pred_ols)
     r2_ols = r2_score(y_test, y_pred_ols)
     print(f"OLS Regression - MSE: {mse_ols:.4f}, R2: {r2_ols:.4f}")
@@ -217,6 +237,7 @@ if 'OLS Regression' in models:
     results['OLS Regression']['y_pred_train'] = y_pred_ols_train
     results['OLS Regression']['importance'] = importance_ols
     results['OLS Regression']['indices'] = indices_ols
+    results['OLS Regression']['label_pred'] = label_pred
 
 
 if 'Linear Regression' in models:
@@ -225,23 +246,24 @@ if 'Linear Regression' in models:
     model_LR = LinearRegression()
     model_LR.fit(X_train, y_train)
     y_pred_LR = model_LR.predict(X_test)
-    y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_LR = y_pred_LR * y_train_std + y_train_mean# Denormalize predictions
     y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
+    label_pred_LR = y_pred_LR - beta * x_thres
     mse_LR = mean_squared_error(y_test, y_pred_LR)
     r2_LR = r2_score(y_test, y_pred_LR)
     print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
 
     # Feature importance for linear regression (absolute value of coefficients)
     print(model_LR.coef_.shape)
-    coef_importance = np.abs(model_LR.coef_)
-    indices_lr = np.argsort(coef_importance)[::-1]
+    coef_importance = model_LR.coef_
+    indices_lr = np.argsort(np.abs(coef_importance))[::-1]
     results['Linear Regression']['MSE'] = mse_LR
     results['Linear Regression']['R2'] = r2_LR
     results['Linear Regression']['y_pred'] = y_pred_LR
     results['Linear Regression']['y_pred_train'] = y_pred_LR_train
     results['Linear Regression']['importance'] = coef_importance
     results['Linear Regression']['indices'] = indices_lr
+    results['Linear Regression']['label_pred'] = label_pred_LR
 
 
 if 'LightGBM Regressor' in models:
@@ -253,7 +275,7 @@ if 'LightGBM Regressor' in models:
     y_pred_lgb = model_lgb.predict(X_test)
     y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
     y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
+    label_pred_lgb = y_pred_lgb - beta * x_thres
     mse_lgb = mean_squared_error(y_test, y_pred_lgb)
     r2_lgb = r2_score(y_test, y_pred_lgb)
     lgb_importances = model_lgb.feature_importances_
@@ -266,6 +288,7 @@ if 'LightGBM Regressor' in models:
     results['LightGBM Regressor']['y_pred_train'] = y_pred_lgb_train
     results['LightGBM Regressor']['importance'] = lgb_importances
     results['LightGBM Regressor']['indices'] = indices_lgb
+    results['LightGBM Regressor']['label_pred'] = label_pred_lgb
 
 
 if 'XGBoost Regressor' in models:
@@ -276,7 +299,7 @@ if 'XGBoost Regressor' in models:
     y_pred_xgb = model_xgb.predict(X_test)
     y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
     y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
+    label_pred_xgb = y_pred_xgb - beta * x_thres
     mse_xgb = mean_squared_error(y_test, y_pred_xgb)
     r2_xgb = r2_score(y_test, y_pred_xgb)
     importance_xgb = model_xgb.feature_importances_
@@ -288,6 +311,7 @@ if 'XGBoost Regressor' in models:
     results['XGBoost Regressor']['y_pred_train'] = y_pred_xgb_train
     results['XGBoost Regressor']['importance'] = importance_xgb
     results['XGBoost Regressor']['indices'] = indices_xgb
+    results['XGBoost Regressor']['label_pred'] = label_pred_xgb
 
 if 'CNN Regressor' in models:
     results['CNN Regressor'] = {}
@@ -357,6 +381,7 @@ if 'CNN Regressor' in models:
 
     y_pred_cnn_train_norm = model_cnn.predict(X_train[..., np.newaxis]).flatten()
     y_pred_cnn_train = y_pred_cnn_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
+    label_pred_cnn = y_pred_cnn - beta * x_thres
 
     mse_cnn = mean_squared_error(y_test, y_pred_cnn)
     r2_cnn = r2_score(y_test, y_pred_cnn)
@@ -365,6 +390,7 @@ if 'CNN Regressor' in models:
     results['CNN Regressor']['R2'] = r2_cnn
     results['CNN Regressor']['y_pred'] = y_pred_cnn
     results['CNN Regressor']['y_pred_train'] = y_pred_cnn_train
+    results['CNN Regressor']['label_pred'] = label_pred_cnn
 
 if 'Random Forest Regressor' in models:
     results['Random Forest Regressor'] = {}
@@ -374,7 +400,7 @@ if 'Random Forest Regressor' in models:
     y_pred_rf = model_rf.predict(X_test)
     y_pred_rf = y_pred_rf * y_train_std + y_train_mean  # Denormalize predictions
     y_pred_rf_train = model_rf.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
+    label_pred_rf = y_pred_rf - beta * x_thres
     mse_rf = mean_squared_error(y_test, y_pred_rf)
     r2_rf = r2_score(y_test, y_pred_rf)
     print(f"Random Forest Regressor - MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
@@ -388,6 +414,7 @@ if 'Random Forest Regressor' in models:
     results['Random Forest Regressor']['y_pred_train'] = y_pred_rf_train
     results['Random Forest Regressor']['importance'] = importances
     results['Random Forest Regressor']['indices'] = indices
+    results['Random Forest Regressor']['label_pred'] = label_pred_rf
 
 
 # Plot feature importance for all models
@@ -406,7 +433,7 @@ for i in range(nplot_1):
     axes[i].set_xlabel("Feature")
 
 plt.tight_layout()
-plt.savefig(f'ft_imp_nMod{len(models)}_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'output/ft_imp_{symbol}_{label_name}_nMod{len(models)}_{label_name}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
 
 fig2, axes2 = plt.subplots(len(models), 2, figsize=(18, 16))
@@ -433,5 +460,18 @@ for i, model_name in enumerate(models):
     axes2[i,1].legend()
 
 plt.tight_layout()
-plt.savefig(f'pred_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'output/pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.show()
+
+fig3, axes3 = plt.subplots(1, len(models), figsize=(18, 6))
+for i, model_name in enumerate(models):
+    label_pred = results[model_name]['label_pred']
+    axes3[i].scatter(label_test, label_pred, alpha=0.5, label=model_name)
+    axes3[i].set_xlabel('Threshold')
+    axes3[i].set_ylabel('Predicted Label (Pred - beta * Threshold)')
+    axes3[i].set_title(f'{model_name}: Predicted Label vs Threshold ({label_name})')
+    axes3[i].grid(True)
+    axes3[i].legend()
+plt.tight_layout()
+plt.savefig(f'output/label_pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
