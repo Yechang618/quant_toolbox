@@ -9,14 +9,20 @@ from sklearn.inspection import permutation_importance
 
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
-import xgboost as xgb
-import lightgbm as lgb
+# import tensorflow as tf
+# from tensorflow import keras
+# from tensorflow.keras import layers
+# import xgboost as xgb
+# import lightgbm as lgb
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 import statsmodels.api as sm
+
+results = {}
+models = ['OLS Regression', 'Linear Regression',  
+        #   'LightGBM Regressor', 'XGBoost Regressor', 
+        #   'Random Forest Regressor', 'CNN Regressor', 
+          ]
 
 TOLERENCE = 1e-12
 
@@ -24,7 +30,14 @@ mode = 0
 # delay_exec = ''
 delay_exec = '_2'
 normalize_X = 0
-operation = 'open2'
+# operation = 'open2'
+operation = 'close2'
+
+######### label
+label_name = 'gain_vs_threshold' # basis_executed - threshold
+# label_name = 'basis_expected_to_thres'
+# label_name = 'basis_executed'
+# label_name = 'basis_slippage'
 
 # Define the folder path
 folder_path = f'dataset/preprocessed{delay_exec}/mode{mode}/'
@@ -72,7 +85,7 @@ combined_df['exec_ts_utc'] = pd.to_datetime(
 )
 combined_df = combined_df.sort_values('exec_ts_utc')
 
-print(combined_df['execute_delay_ms'].describe())
+# print(combined_df['execute_delay_ms'].describe())
 
 # Filter out outliers based on the 95th percentile of execute_delay_ms
 upper_limit_delay = combined_df['execute_delay_ms'].quantile(0.80)
@@ -90,8 +103,12 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 # Select only the relevant columns and drop rows with missing values
 df = filtered_df[selected_cols].dropna()
 
-feature_cols = ['threshold', 'basis_expected', 
-                # 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
+feature_cols = [#'threshold', 
+                # 'basis_expected', 
+                'basis_executed',
+                # 'spot_midprice_mean', 
+                # 'spot_midprice_std', 
+                # 'spot_spread_mean', 
                 # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
                 #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
                 #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
@@ -99,39 +116,49 @@ feature_cols = ['threshold', 'basis_expected',
                 #  'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
                 #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
                 #  'basis_bid_low', 
-                'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
-                'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
-                'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
-                'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s', 
-                'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s', 
+                # 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
+                # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
+                # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
+                # 'spot_price_return_60s', 'swap_price_return_60s', 
+                'spot_trade_volume_60s', 
+                'spot_trade_count_60s', 
+                # 'spot_buy_trade_ratio', 
+                'swap_trade_volume_60s', 
                 'swap_trade_count_60s', 
+                # 'basis_slippage_rate'
                 # 'spot_basis_slippage_ticks', 
                 ]
-label_cols = ['gain_vs_threshold']#, 'basis_slippage']
-print(f"Selected {len(feature_cols)} features and {len(label_cols)} labels")
+print(f"Selected {len(feature_cols)} features")
 
 # Calculate columns
 df['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df['basis_expected'] + 1e-12)
 df['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
 df['basis_bid_k_volatility'] = (df['basis_bid_high'] - df['basis_bid_low']) / (np.abs(df['basis_bid_close'] - df['basis_bid_open']) + 1e-12)
-feature_cols.append('basis_ask_k_volatility')
-feature_cols.append('basis_bid_k_volatility')
-df['constant_feature'] = 1.0
-feature_cols.append('constant_feature')
+
 basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
 df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
-feature_cols.append('basis_mid_to_thres')
 basis_close_mid = (df['basis_ask_close'] + df['basis_bid_close']) / 2
 df['basis_close_to_thres'] = (basis_close_mid - df['threshold'])
-feature_cols.append('basis_close_to_thres')
+df['basis_expected_to_thres'] = (df['basis_expected'] - df['threshold'])
+
+# feature_cols.append('basis_expected_to_thres')
+# feature_cols.append('basis_ask_k_volatility')
+# feature_cols.append('basis_bid_k_volatility')
+# feature_cols.append('basis_close_to_thres')
+# feature_cols.append('basis_mid_to_thres')
+
+df['const.'] = 1.0
+feature_cols.append('const.')
+
+# df['basis_executed_to_thres'] = (df['basis_executed'] - df['threshold'])
+# feature_cols.append('basis_executed_to_thres')
 
 # Prepare data for modeling
 df_sample = df.copy()
 X = df_sample[feature_cols].values
 
 # Generate labels based on the selected label column
-label_name = 'gain_vs_threshold'
-# label_name = 'basis_slippage'
+
 y = df_sample[label_name].values
 y = np.squeeze(y)  # Convert to 1D array if it's a single column
 
@@ -165,25 +192,21 @@ X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
 X_train = np.asarray(X_train)
 X_test = np.asarray(X_test)
 
-results = {}
-models = ['OLS Regression', 'Linear Regression',  
-          'LightGBM Regressor', 'XGBoost Regressor', 
-        #   'Random Forest Regressor', 'CNN Regressor', 
-          ]
-
 if 'OLS Regression' in models:
     results['OLS Regression'] = {}
     # Train an OLS regression model using statsmodels
-    X_train_sm = sm.add_constant(X_train)  # Add intercept term
+    # X_train_sm = sm.add_constant(X_train)  # Add intercept term
+    X_train_sm = X_train.copy()  # Ensure it's a pure numpy array
     model_ols = sm.OLS(y_train, X_train_sm).fit()
-    X_test_sm = sm.add_constant(X_test)
+    # X_test_sm = sm.add_constant(X_test)
+    X_test_sm = X_test.copy()  # Ensure it's a pure numpy array
     y_pred_ols_norm = model_ols.predict(X_test_sm)
     y_pred_ols = y_pred_ols_norm * y_train_std + y_train_mean  # Denormalize predictions
     y_pred_ols_train_norm = model_ols.predict(X_train_sm)
     y_pred_ols_train = y_pred_ols_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
 
     print(model_ols.summary())
-    importance_ols = np.abs(model_ols.params[1:])  # Exclude intercept
+    importance_ols = np.abs(model_ols.params[0:])  # Exclude intercept
     indices_ols = np.argsort(importance_ols)[::-1]
     mse_ols = mean_squared_error(y_test, y_pred_ols)
     r2_ols = r2_score(y_test, y_pred_ols)
@@ -373,7 +396,8 @@ nplot_1 = len(models_plot_imp)
 fig, axes = plt.subplots(1, nplot_1, figsize=(24, 6))
 for i in range(nplot_1):
     axes[i].grid(True)
-    axes[i].set_title(f"{models_plot_imp[i]} Feature Importances, MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
+    axes[i].set_title(f"{models_plot_imp[i]} Feature Imp. ({label_name}),\n MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
+    # print(f"X_train shape: {X_train.shape}, importance shape: {results[models_plot_imp[i]]['importance'].shape}")
     axes[i].bar(range(X_train.shape[1]), results[models_plot_imp[i]]['importance'][results[models_plot_imp[i]]['indices']], align="center")
     axes[i].set_xticks(range(X_train.shape[1]))
     axes[i].set_xticklabels([feature_cols[j] for j in results[models_plot_imp[i]]['indices']], rotation=90)
@@ -397,14 +421,14 @@ for i, model_name in enumerate(models):
     axes2[i,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
     axes2[i,0].set_xlabel('True Values')
     axes2[i,0].set_ylabel('Predicted Values')
-    axes2[i,0].set_title(f'{model_name}: True vs Predicted Values')
+    axes2[i,0].set_title(f'{model_name}: True vs Predicted Values ({label_name})')
     axes2[i,0].grid(True)
     axes2[i,0].legend()
     axes2[i,1].scatter(y_train_denorm, y_pred_train, alpha=0.5, label=f'{model_name} (Train)', color='orange')
     axes2[i,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
     axes2[i,1].set_xlabel('True Values (Train)')
     axes2[i,1].set_ylabel('Predicted Values')
-    axes2[i,1].set_title(f'{model_name}: True vs Predicted Values (Train)')
+    axes2[i,1].set_title(f'{model_name}: True vs Predicted Values (Train) ({label_name})')
     axes2[i,1].grid(True)
     axes2[i,1].legend()
 
