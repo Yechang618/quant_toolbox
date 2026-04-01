@@ -16,6 +16,7 @@ import xgboost as xgb
 import lightgbm as lgb
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
+import statsmodels.api as sm
 
 TOLERENCE = 1e-12
 
@@ -165,7 +166,105 @@ X_train = np.asarray(X_train)
 X_test = np.asarray(X_test)
 
 results = {}
-models = ['Random Forest Regressor', 'Linear Regression', 'LightGBM Regressor', 'XGBoost Regressor', 'CNN Regressor']
+models = ['OLS Regression', 'Linear Regression',  
+          'LightGBM Regressor', 'XGBoost Regressor', 
+        #   'Random Forest Regressor', 'CNN Regressor', 
+          ]
+
+if 'OLS Regression' in models:
+    results['OLS Regression'] = {}
+    # Train an OLS regression model using statsmodels
+    X_train_sm = sm.add_constant(X_train)  # Add intercept term
+    model_ols = sm.OLS(y_train, X_train_sm).fit()
+    X_test_sm = sm.add_constant(X_test)
+    y_pred_ols_norm = model_ols.predict(X_test_sm)
+    y_pred_ols = y_pred_ols_norm * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_ols_train_norm = model_ols.predict(X_train_sm)
+    y_pred_ols_train = y_pred_ols_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
+
+    print(model_ols.summary())
+    importance_ols = np.abs(model_ols.params[1:])  # Exclude intercept
+    indices_ols = np.argsort(importance_ols)[::-1]
+    mse_ols = mean_squared_error(y_test, y_pred_ols)
+    r2_ols = r2_score(y_test, y_pred_ols)
+    print(f"OLS Regression - MSE: {mse_ols:.4f}, R2: {r2_ols:.4f}")
+    results['OLS Regression']['MSE'] = mse_ols
+    results['OLS Regression']['R2'] = r2_ols
+    results['OLS Regression']['y_pred'] = y_pred_ols
+    results['OLS Regression']['y_pred_train'] = y_pred_ols_train
+    results['OLS Regression']['importance'] = importance_ols
+    results['OLS Regression']['indices'] = indices_ols
+
+
+if 'Linear Regression' in models:
+    results['Linear Regression'] = {}
+    # Train a linear regression model
+    model_LR = LinearRegression()
+    model_LR.fit(X_train, y_train)
+    y_pred_LR = model_LR.predict(X_test)
+    y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+
+    mse_LR = mean_squared_error(y_test, y_pred_LR)
+    r2_LR = r2_score(y_test, y_pred_LR)
+    print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
+
+    # Feature importance for linear regression (absolute value of coefficients)
+    print(model_LR.coef_.shape)
+    coef_importance = np.abs(model_LR.coef_)
+    indices_lr = np.argsort(coef_importance)[::-1]
+    results['Linear Regression']['MSE'] = mse_LR
+    results['Linear Regression']['R2'] = r2_LR
+    results['Linear Regression']['y_pred'] = y_pred_LR
+    results['Linear Regression']['y_pred_train'] = y_pred_LR_train
+    results['Linear Regression']['importance'] = coef_importance
+    results['Linear Regression']['indices'] = indices_lr
+
+
+if 'LightGBM Regressor' in models:
+    # Train a lightGBM model
+    model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, 
+                                  max_depth=10, random_state=42,
+                                  verbosity = -1)
+    model_lgb.fit(X_train, y_train)
+    y_pred_lgb = model_lgb.predict(X_test)
+    y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+
+    mse_lgb = mean_squared_error(y_test, y_pred_lgb)
+    r2_lgb = r2_score(y_test, y_pred_lgb)
+    lgb_importances = model_lgb.feature_importances_
+    indices_lgb = np.argsort(lgb_importances)[::-1]
+    print(f"LightGBM Regressor - MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
+    results['LightGBM Regressor'] = {}
+    results['LightGBM Regressor']['MSE'] = mse_lgb
+    results['LightGBM Regressor']['R2'] = r2_lgb
+    results['LightGBM Regressor']['y_pred'] = y_pred_lgb
+    results['LightGBM Regressor']['y_pred_train'] = y_pred_lgb_train
+    results['LightGBM Regressor']['importance'] = lgb_importances
+    results['LightGBM Regressor']['indices'] = indices_lgb
+
+
+if 'XGBoost Regressor' in models:
+    results['XGBoost Regressor'] = {}
+    # Train a XGBoost model
+    model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
+    model_xgb.fit(X_train, y_train)
+    y_pred_xgb = model_xgb.predict(X_test)
+    y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
+    y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
+
+    mse_xgb = mean_squared_error(y_test, y_pred_xgb)
+    r2_xgb = r2_score(y_test, y_pred_xgb)
+    importance_xgb = model_xgb.feature_importances_
+    indices_xgb = np.argsort(importance_xgb)[::-1]
+    print(f"XGBoost Regressor - MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
+    results['XGBoost Regressor']['MSE'] = mse_xgb
+    results['XGBoost Regressor']['R2'] = r2_xgb
+    results['XGBoost Regressor']['y_pred'] = y_pred_xgb
+    results['XGBoost Regressor']['y_pred_train'] = y_pred_xgb_train
+    results['XGBoost Regressor']['importance'] = importance_xgb
+    results['XGBoost Regressor']['indices'] = indices_xgb
 
 if 'CNN Regressor' in models:
     results['CNN Regressor'] = {}
@@ -241,39 +340,8 @@ if 'CNN Regressor' in models:
     print(f"CNN - MSE: {mse_cnn:.4f}, R2: {r2_cnn:.4f}")
     results['CNN Regressor']['MSE'] = mse_cnn
     results['CNN Regressor']['R2'] = r2_cnn
-
-if 'XGBoost Regressor' in models:
-    results['XGBoost Regressor'] = {}
-    # Train a XGBoost model
-    model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
-    model_xgb.fit(X_train, y_train)
-    y_pred_xgb = model_xgb.predict(X_test)
-    y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
-    y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
-    mse_xgb = mean_squared_error(y_test, y_pred_xgb)
-    r2_xgb = r2_score(y_test, y_pred_xgb)
-    importance_xgb = model_xgb.feature_importances_
-    indices_xgb = np.argsort(importance_xgb)[::-1]
-    print(f"XGBoost Regressor - MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
-    results['XGBoost Regressor']['MSE'] = mse_xgb
-    results['XGBoost Regressor']['R2'] = r2_xgb
-
-if 'LightGBM Regressor' in models:
-    # Train a lightGBM model
-    model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=10, random_state=42)
-    model_lgb.fit(X_train, y_train)
-    y_pred_lgb = model_lgb.predict(X_test)
-    y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
-    y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
-    mse_lgb = mean_squared_error(y_test, y_pred_lgb)
-    r2_lgb = r2_score(y_test, y_pred_lgb)
-    print(f"LightGBM Regressor - MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
-    results['LightGBM Regressor'] = {}
-    results['LightGBM Regressor']['MSE'] = mse_lgb
-    results['LightGBM Regressor']['R2'] = r2_lgb
-
+    results['CNN Regressor']['y_pred'] = y_pred_cnn
+    results['CNN Regressor']['y_pred_train'] = y_pred_cnn_train
 
 if 'Random Forest Regressor' in models:
     results['Random Forest Regressor'] = {}
@@ -293,159 +361,53 @@ if 'Random Forest Regressor' in models:
     indices = np.argsort(importances)[::-1]
     results['Random Forest Regressor']['MSE'] = mse_rf
     results['Random Forest Regressor']['R2'] = r2_rf
-
-if 'Linear Regression' in models:
-    results['Linear Regression'] = {}
-    # Train a linear regression model
-    model_LR = LinearRegression()
-    model_LR.fit(X_train, y_train)
-    y_pred_LR = model_LR.predict(X_test)
-    y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
-    y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
-
-    mse_LR = mean_squared_error(y_test, y_pred_LR)
-    r2_LR = r2_score(y_test, y_pred_LR)
-    print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
-
-    # Feature importance for linear regression (absolute value of coefficients)
-    print(model_LR.coef_.shape)
-    coef_importance = np.abs(model_LR.coef_)
-    indices_lr = np.argsort(coef_importance)[::-1]
+    results['Random Forest Regressor']['y_pred'] = y_pred_rf
+    results['Random Forest Regressor']['y_pred_train'] = y_pred_rf_train
+    results['Random Forest Regressor']['importance'] = importances
+    results['Random Forest Regressor']['indices'] = indices
 
 
-fig, axes = plt.subplots(1, 4, figsize=(24, 6))
-
-# Plot feature importance for Random Forest
-axes[0].set_title(f"Random Forest Feature Importances, MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
-axes[0].bar(range(X_train.shape[1]), importances[indices], align="center")
-axes[0].set_xticks(range(X_train.shape[1]))
-axes[0].set_xticklabels([feature_cols[i] for i in indices], rotation=90)
-axes[0].set_xlim([-1, X_train.shape[1]])
-axes[0].set_ylabel("Importance")
-axes[0].set_xlabel("Feature")
-
-# Plot feature importance for XGBoost
-# Fix: Use XGBoost's own indices for sorting if desired, or keep RF indices for comparison. Keeping RF indices for consistency with original logic.
-axes[3].set_title(f"XGBoost Feature Importances, MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
-axes[3].bar(range(X_train.shape[1]), model_xgb.feature_importances_[indices_xgb], align="center")
-axes[3].set_xticks(range(X_train.shape[1]))
-axes[3].set_xticklabels([feature_cols[i] for i in indices_xgb], rotation=90)
-axes[3].set_xlim([-1, X_train.shape[1]])
-axes[3].set_ylabel("Importance")
-axes[3].set_xlabel("Feature")
-
-# Plot feature importance for Linear Regression
-axes[1].set_title(f"Linear Regression Coefficient Importances, MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
-axes[1].bar(range(X_train.shape[1]), coef_importance[indices_lr], align="center")
-axes[1].set_xticks(range(X_train.shape[1]))
-axes[1].set_xticklabels([feature_cols[i] for i in indices_lr], rotation=90)
-axes[1].set_xlim([-1, X_train.shape[1]])
-axes[1].set_ylabel("Coefficient Value")
-axes[1].set_xlabel("Feature")
-
-# Plot feature importance for LightGBM
-lgb_importances = model_lgb.feature_importances_
-indices_lgb = np.argsort(lgb_importances)[::-1]
-axes[2].set_title(f"LightGBM Feature Importances, MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
-axes[2].bar(range(X_train.shape[1]), lgb_importances[indices_lgb], align="center")
-axes[2].set_xticks(range(X_train.shape[1]))
-axes[2].set_xticklabels([feature_cols[i] for i in indices_lgb], rotation=90)
-axes[2].set_xlim([-1, X_train.shape[1]])
+# Plot feature importance for all models
+models_plot_imp = [model for model in models if 'importance' in results[model]]  # Exclude CNN from importance plot
+nplot_1 = len(models_plot_imp)
+fig, axes = plt.subplots(1, nplot_1, figsize=(24, 6))
+for i in range(nplot_1):
+    axes[i].grid(True)
+    axes[i].set_title(f"{models_plot_imp[i]} Feature Importances, MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
+    axes[i].bar(range(X_train.shape[1]), results[models_plot_imp[i]]['importance'][results[models_plot_imp[i]]['indices']], align="center")
+    axes[i].set_xticks(range(X_train.shape[1]))
+    axes[i].set_xticklabels([feature_cols[j] for j in results[models_plot_imp[i]]['indices']], rotation=90)
+    axes[i].set_xlim([-1, X_train.shape[1]])
+    axes[i].set_ylabel("Importance")
+    axes[i].set_xlabel("Feature")
 
 plt.tight_layout()
-plt.savefig(f'feature_imp_label_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'ft_imp_nMod{len(models)}_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
 
-fig2, axes2 = plt.subplots(5, 2, figsize=(18, 16))
+fig2, axes2 = plt.subplots(len(models), 2, figsize=(18, 16))
 
 # Denormalize y_train for plotting
 y_train_denorm = y_train * y_train_std + y_train_mean
 
-# Plot true vs predicted values for Random Forest
-axes2[0,0].scatter(y_test, y_pred_rf, alpha=0.5, label='Random Forest')
-axes2[0,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-axes2[0,0].set_xlabel('True Values')
-axes2[0,0].set_ylabel('Predicted Values')
-axes2[0,0].set_title('Random Forest: True vs Predicted Values')
-axes2[0,0].grid(True)
-axes2[0,0].legend()
-
-axes2[0,1].scatter(y_train_denorm, y_pred_rf_train, alpha=0.5, label='Random Forest (Train)', color='orange')
-axes2[0,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-axes2[0,1].set_xlabel('True Values (Train)')
-axes2[0,1].set_ylabel('Predicted Values')
-axes2[0,1].set_title('Random Forest: True vs Predicted Values (Train)')
-axes2[0,1].grid(True)
-axes2[0,1].legend()
-
-# Plot true vs predicted values for Linear Regression
-axes2[1,0].scatter(y_test, y_pred_LR, alpha=0.5, label='Linear Regression')
-axes2[1,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-axes2[1,0].set_xlabel('True Values')
-axes2[1,0].set_ylabel('Predicted Values')
-axes2[1,0].set_title('Linear Regression: True vs Predicted Values')
-axes2[1,0].grid(True)
-axes2[1,0].legend()
-
-axes2[1,1].scatter(y_train_denorm, y_pred_LR_train, alpha=0.5, label='Linear Regression (Train)', color='orange')
-axes2[1,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-axes2[1,1].set_xlabel('True Values (Train)')
-axes2[1,1].set_ylabel('Predicted Values')
-axes2[1,1].set_title('Linear Regression: True vs Predicted Values (Train)')
-axes2[1,1].grid(True)
-axes2[1,1].legend()
-
-# Plot true vs predicted values for LightGBM
-axes2[2,0].scatter(y_test, y_pred_lgb, alpha=0.5, label='LightGBM')
-axes2[2,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-axes2[2,0].set_xlabel('True Values')
-axes2[2,0].set_ylabel('Predicted Values')
-axes2[2,0].set_title('LightGBM: True vs Predicted Values')
-axes2[2,0].grid(True)
-axes2[2,0].legend()
-
-axes2[2,1].scatter(y_train_denorm, y_pred_lgb_train, alpha=0.5, label='LightGBM (Train)', color='orange')
-axes2[2,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-axes2[2,1].set_xlabel('True Values (Train)')
-axes2[2,1].set_ylabel('Predicted Values')
-axes2[2,1].set_title('LightGBM: True vs Predicted Values (Train)')
-axes2[2,1].grid(True)
-axes2[2,1].legend()
-
-# Plot true vs predicted values for XGBoost
-axes2[3,0].scatter(y_test, y_pred_xgb, alpha=0.5, label='XGBoost')
-axes2[3,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-axes2[3,0].set_xlabel('True Values')
-axes2[3,0].set_ylabel('Predicted Values')
-axes2[3,0].set_title('XGBoost: True vs Predicted Values')
-axes2[3,0].grid(True)
-axes2[3,0].legend()
-
-axes2[3,1].scatter(y_train_denorm, y_pred_xgb_train, alpha=0.5, label='XGBoost (Train)', color='orange')
-axes2[3,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-axes2[3,1].set_xlabel('True Values (Train)')
-axes2[3,1].set_ylabel('Predicted Values')
-axes2[3,1].set_title('XGBoost: True vs Predicted Values (Train)')
-axes2[3,1].grid(True)
-axes2[3,1].legend()
-
-# Plot true vs predicted values for CNN
-axes2[4,0].scatter(y_test, y_pred_cnn, alpha=0.5, label='CNN')
-axes2[4,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-axes2[4,0].set_xlabel('True Values')
-axes2[4,0].set_ylabel('Predicted Values')
-axes2[4,0].set_title('CNN: True vs Predicted Values')
-axes2[4,0].grid(True)
-axes2[4,0].legend()
-
-axes2[4,1].scatter(y_train_denorm, y_pred_cnn_train, alpha=0.5, label='CNN (Train)', color='orange')
-axes2[4,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-axes2[4,1].set_xlabel('True Values (Train)')
-axes2[4,1].set_ylabel('Predicted Values')
-axes2[4,1].set_title('CNN: True vs Predicted Values (Train)')
-axes2[4,1].grid(True)
-axes2[4,1].legend()
+for i, model_name in enumerate(models):
+    y_pred = results[model_name]['y_pred']
+    y_pred_train = results[model_name]['y_pred_train']
+    axes2[i,0].scatter(y_test, y_pred, alpha=0.5, label=model_name)
+    axes2[i,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
+    axes2[i,0].set_xlabel('True Values')
+    axes2[i,0].set_ylabel('Predicted Values')
+    axes2[i,0].set_title(f'{model_name}: True vs Predicted Values')
+    axes2[i,0].grid(True)
+    axes2[i,0].legend()
+    axes2[i,1].scatter(y_train_denorm, y_pred_train, alpha=0.5, label=f'{model_name} (Train)', color='orange')
+    axes2[i,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
+    axes2[i,1].set_xlabel('True Values (Train)')
+    axes2[i,1].set_ylabel('Predicted Values')
+    axes2[i,1].set_title(f'{model_name}: True vs Predicted Values (Train)')
+    axes2[i,1].grid(True)
+    axes2[i,1].legend()
 
 plt.tight_layout()
-plt.savefig(f'true_vs_pred_{label_name}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'pred_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 plt.show()
