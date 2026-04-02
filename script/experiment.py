@@ -9,33 +9,34 @@ from sklearn.inspection import permutation_importance
 
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
-# import tensorflow as tf
-# from tensorflow import keras
-# from tensorflow.keras import layers
-# import xgboost as xgb
-# import lightgbm as lgb
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras import layers
+import xgboost as xgb
+import lightgbm as lgb
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 import statsmodels.api as sm
+import seaborn as sns
 
 results = {}
 models = ['OLS Regression', 'Linear Regression',  
-        #   'LightGBM Regressor', 'XGBoost Regressor', 
-        #   'Random Forest Regressor', 'CNN Regressor', 
+          'LightGBM Regressor', 'XGBoost Regressor', 
+          'Random Forest Regressor', 'CNN Regressor', 
           ]
 
 TOLERENCE = 1e-12
 
-mode = 0
+mode = 2
 delay_exec = ''
 # delay_exec = '_2'
-normalize_X = 1
-# operation = 'open2'
-operation = 'close2'
+normalize_X = 0
+operation = 'open2'
+# operation = 'close2'
 delay_precentile = 30
 beta = 1
 symbol = 'all'
-symbol = 'ZENUSDT'
+# symbol = 'ZENUSDT'
 
 ######### label
 label_name = 'gain_vs_threshold' # basis_executed - threshold
@@ -114,14 +115,14 @@ feature_cols = ['threshold',
                 # 'spot_midprice_mean', 
                 'spot_midprice_std', 
                 # 'spot_spread_mean', 
-                # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                #  'basis_bid_open', 
-                # 'basis_ask_close', 'basis_bid_close', 
-                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                #  'basis_bid_low', 
+                'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
+                 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
+                 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
+                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
+                 'basis_bid_open', 
+                'basis_ask_close', 'basis_bid_close', 
+                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
+                 'basis_bid_low', 
                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
                 # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
                 # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
@@ -162,6 +163,16 @@ feature_cols.append('const.')
 
 # df['basis_executed_to_thres'] = (df['basis_executed'] - df['threshold'])
 # feature_cols.append('basis_executed_to_thres')
+
+# Visualize correlation
+label_names = ['basis_slippage', 'gain_vs_threshold']
+df_corr = df[feature_cols + label_names].corr()
+corr_matrix = df_corr.corr()
+# 3. Plot using Seaborn
+plt.figure(figsize=(16, 12))
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+plt.title('Correlation Matrix')
+plt.show()
 
 # Prepare data for modeling
 df_sample = df.copy()
@@ -269,7 +280,7 @@ if 'Linear Regression' in models:
 if 'LightGBM Regressor' in models:
     # Train a lightGBM model
     model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, 
-                                  max_depth=10, random_state=42,
+                                  max_depth=20, random_state=42,
                                   verbosity = -1)
     model_lgb.fit(X_train, y_train)
     y_pred_lgb = model_lgb.predict(X_test)
@@ -294,7 +305,9 @@ if 'LightGBM Regressor' in models:
 if 'XGBoost Regressor' in models:
     results['XGBoost Regressor'] = {}
     # Train a XGBoost model
-    model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
+    model_xgb = xgb.XGBRegressor(n_estimators=20000, max_depth=10,
+                                 device='cuda',
+                                 random_state=42)
     model_xgb.fit(X_train, y_train)
     y_pred_xgb = model_xgb.predict(X_test)
     y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
