@@ -26,8 +26,6 @@ models = ['OLS Regression', 'Linear Regression',
           ]
 
 TOLERENCE = 1e-12
-<<<<<<< Updated upstream
-
 mode = 2
 # delay_exec = ''
 delay_exec = '_2'
@@ -48,14 +46,7 @@ label_name = 'gain_vs_threshold' # basis_executed - threshold
 # Define the folder path
 folder_path = f'dataset/preprocessed{delay_exec}/mode{mode}/'
 # folder_path = 'dataset/preprocessed/mode2/'
-=======
-# Define the folder path
-mode = 0
-# start_or_exec = ''
-start_or_exec = '_2'
-folder_path = f'dataset/preprocessed{start_or_exec}/mode{mode}/'
-# folder_path = 'dataset/preprocessed/mode{mode}/'
->>>>>>> Stashed changes
+
 
 # Get all CSV files in the folder
 csv_files = glob.glob(os.path.join(folder_path, '*.csv'))
@@ -68,11 +59,7 @@ print(f"Total rows: {len(combined_df)}")
 print(combined_df.info())
 
 selected_cols = ['gain_vs_threshold', 'basis_slippage', 'operation',
-<<<<<<< Updated upstream
 'symbol', 'trade_mode', 'exec_ts_utc',
-=======
-# 'symbol', 'trade_mode', 'exec_ts_utc',
->>>>>>> Stashed changes
 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts',
 'threshold', 'basis_expected', 'basis_executed',
 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean',
@@ -109,13 +96,8 @@ operation_select = 'open2'
 # operation_select = 'close2'
 delay_quantile = 30 # Filter out rows with execute_delay_ms above the 50th percentile (median) to focus on more typical cases. Adjust as needed (e.g., 80 for 80th percentile).
 # Filter out outliers based on the 95th percentile of execute_delay_ms
-<<<<<<< Updated upstream
 upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_precentile/100)
 print(f"{delay_precentile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
-=======
-upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_quantile/100)
-print(f"{delay_quantile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
->>>>>>> Stashed changes
 filtered_df = combined_df[combined_df['execute_delay_ms'] <= upper_limit_delay]
 
 # Filter out outliers based on the 10th and 90th percentiles of gain_vs_threshold
@@ -124,42 +106,13 @@ upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.95)
 print(f"5th percentile of gain_vs_threshold: {lower_limit_gain}")
 print(f"95th percentile of gain_vs_threshold: {upper_limit_gain}")
 filtered_df = filtered_df[(filtered_df['gain_vs_threshold'] >= lower_limit_gain) & (filtered_df['gain_vs_threshold'] <= upper_limit_gain)]
-<<<<<<< Updated upstream
 filtered_df = filtered_df[(filtered_df['operation'] == operation)]
 if symbol != 'all':
     filtered_df = filtered_df[filtered_df['symbol'] == symbol]
 print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df)}")
-=======
-filtered_df = filtered_df[filtered_df['operation'] == operation_select]
-print(f"After filtering, total rows: {len(filtered_df)}")
->>>>>>> Stashed changes
 # Select only the relevant columns and drop rows with missing values
 # print(selected_cols)
 df = filtered_df[selected_cols].dropna()
-<<<<<<< HEAD
-=======
-feature_cols = ['threshold', 'basis_expected', 
-                'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
-                'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
-                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                 'basis_bid_low', 
-                'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
-                'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
-                'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
-                'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s', 
-                'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s', 
-                'swap_trade_count_60s', 
-                # 'spot_basis_slippage_ticks', 
-                ]
-label_cols = ['gain_vs_threshold']#, 'basis_slippage']
-print(f"Selected {len(feature_cols)} features and {len(label_cols)} labels")
->>>>>>> d9334c57b136aa65e059eda32e85b096b37dbef6
-
-<<<<<<< Updated upstream
 feature_cols = ['threshold', 
                 # 'basis_expected', 
                 # 'spot_midprice_mean', 
@@ -188,27 +141,7 @@ feature_cols = ['threshold',
                 ]
 print(f"Selected {len(feature_cols)} features")
 
-=======
-feature_cols = ['threshold', 'basis_expected',
-'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean',
-'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high',
-'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std',
-'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks',
-# 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open',
-# 'basis_bid_open', 'basis_ask_close', 'basis_bid_close',
-# 'basis_ask_high', 'basis_bid_high', 'basis_ask_low',
-'basis_bid_low',
-'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean',
-'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks',
-'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks',
-'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s',
-'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s',
-'swap_trade_count_60s',
-# 'spot_basis_slippage_ticks',
-]
 
-label_cols = ['gain_vs_threshold']#, 'basis_slippage']
->>>>>>> Stashed changes
 # Calculate columns
 df['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df['basis_expected'] + 1e-12)
 df['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
@@ -225,7 +158,6 @@ df['basis_bid_close_to_thres'] = (df['basis_bid_close'] - df['threshold'])
 # feature_cols.append('basis_expected_to_thres')
 feature_cols.append('basis_ask_k_volatility')
 feature_cols.append('basis_bid_k_volatility')
-<<<<<<< Updated upstream
 # feature_cols.append('basis_close_to_thres')
 feature_cols.append('basis_mid_to_thres')
 # feature_cols.append('basis_ask_close_to_thres')
@@ -246,51 +178,14 @@ plt.figure(figsize=(16, 12))
 sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
 plt.title('Correlation Matrix')
 plt.show()
-=======
-df['constant_feature'] = 1.0
-feature_cols.append('constant_feature')
-basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
-df['basis_mid_mean_to_threshold'] = basis_mid_mean - (df['threshold'] )
-feature_cols.append('basis_mid_mean_to_threshold')
-basis_mid_close = (df['basis_ask_close'] + df['basis_bid_close']) / 2
-df['basis_mid_close_to_threshold'] = basis_mid_close - (df['threshold'] )
-feature_cols.append('basis_mid_close_to_threshold')
-df['basis_mid_mean_to_expected'] = basis_mid_mean - (df['basis_expected'] )
-feature_cols.append('basis_mid_mean_to_expected')
-df['basis_mid_close_to_expected'] = basis_mid_close - (df['basis_expected'] )
-feature_cols.append('basis_mid_close_to_expected')
-# df['basis_bid_mean_to_threshold'] = df['basis_bid_mean'] - (df['threshold'] )
-# feature_cols.append('basis_bid_mean_to_threshold')
-# df['basis_bid_close_to_threshold'] = df['basis_bid_close'] - (df['threshold'] )
-# feature_cols.append('basis_bid_close_to_threshold')
-# df['basis_ask_close_to_threshold'] = df['basis_ask_close'] - (df['threshold'] )
-# feature_cols.append('basis_ask_close_to_threshold')
-# df['basis_ask_mean_to_threshold'] = df['basis_ask_mean'] - (df['threshold'] )
-# feature_cols.append('basis_ask_mean_to_threshold')
-df['basis_expected_to_threshold'] = df['basis_expected'] - (df['threshold'] )
-feature_cols.append('basis_expected_to_threshold')
-
-print(f"Selected {len(feature_cols)} features")
->>>>>>> Stashed changes
 
 # Prepare data for modeling
 df_sample = df.copy()
 X = df_sample[feature_cols].values
 
 # Generate labels based on the selected label column
-<<<<<<< Updated upstream
-
 Y = df_sample[[label_name, 'gain_vs_threshold']].values
-# y = np.squeeze(y)  # Convert to 1D array if it's a single column
-=======
-label_name = 'gain_vs_threshold'
-# label_name = 'basis_slippage'
-# label_name = 'basis_slippage_rate'
-y = df_sample[label_name].values
-y = np.squeeze(y)  # Convert to 1D array if it's a single column
->>>>>>> Stashed changes
-
-# Fix: Remove redundant train_test_split and use consistent test_size
+# y = np.squeeze(y)  # Convert to 1D array if it's a single column# Fix: Remove redundant train_test_split and use consistent test_size
 test_size = 0.2  # Changed from 0.1 to 0.2 for better evaluation
 # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42) # Removed redundant line
 X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
@@ -301,7 +196,6 @@ print(f"X_train shape: {X_train.shape}, Y_train shape: {Y_train.shape}")
 
 x_thres = X_test[:, feature_cols.index('threshold')]
 # Normalize features and labels
-<<<<<<< Updated upstream
 if normalize_X == 1:
     X_train_mean = X_train.mean(axis=0)
     X_train_std = X_train.std(axis=0)
@@ -325,30 +219,12 @@ y_test = Y_test[:, 0]  # Assuming the first column is the main label for evaluat
 y_train = Y_train[:, 0]  # Assuming the first column is the main label
 label_test = Y_test[:, 1]  # gain_vs_threshold for label prediction plot
 label_train = Y_train[:, 1]  # gain_vs_threshold for label prediction plot
-=======
-normalized = 1
-if normalized == 1:
-    X_train_mean = X_train.mean(axis=0)
-    X_train_std = X_train.std(axis=0)
-    y_train_mean = y_train.mean()
-    y_train_std = y_train.std()
-else:
-    X_train_mean = 0
-    X_train_std = 1
-    y_train_mean = 0
-    y_train_std = 1
 
-X_train = (X_train - X_train_mean) / (X_train_std + 1e-12)
-y_train = (y_train - y_train_mean) / (y_train_std + 1e-12)
-X_test = (X_test - X_train_mean) / (X_train_std + 1e-12)
-# Note: y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
->>>>>>> Stashed changes
 
 # Ensure X_train/X_test are pure numpy arrays to avoid LightGBM feature name warnings
 X_train = np.asarray(X_train)
 X_test = np.asarray(X_test)
 
-<<<<<<< Updated upstream
 if 'OLS Regression' in models:
     results['OLS Regression'] = {}
     # Train an OLS regression model using statsmodels
@@ -402,14 +278,6 @@ if 'Linear Regression' in models:
     results['Linear Regression']['importance'] = coef_importance
     results['Linear Regression']['indices'] = indices_lr
     results['Linear Regression']['label_pred'] = label_pred_LR
-=======
-####################################################################
-# ==================== Train a DEEPER CNN model ====================
-####################################################################
-import tensorflow as tf
-from tensorflow import keras
-from tensorflow.keras import layers
->>>>>>> Stashed changes
 
 
 if 'LightGBM Regressor' in models:
@@ -510,7 +378,6 @@ if 'CNN Regressor' in models:
     model_cnn.compile(optimizer='adam', loss='mse', metrics=['mae'])
     model_cnn.summary()
 
-<<<<<<< Updated upstream
     # 训练模型 - 输入需要扩展为 3D (n_sample, n_features, 1)
     history = model_cnn.fit(
         X_train[..., np.newaxis], 
@@ -523,37 +390,14 @@ if 'CNN Regressor' in models:
             keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
         ]
     )
-=======
-######################################################
-################### Train a XGBoost model ############
-######################################################
-import xgboost as xgb
-model_xgb = xgb.XGBRegressor(n_estimators=2000, random_state=42)
-model_xgb.fit(X_train, y_train)
-y_pred_xgb = model_xgb.predict(X_test)
-y_pred_xgb = y_pred_xgb * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_xgb_train = model_xgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
->>>>>>> Stashed changes
 
     # 预测
     y_pred_cnn_norm = model_cnn.predict(X_test[..., np.newaxis]).flatten()
     y_pred_cnn = y_pred_cnn_norm * y_train_std + y_train_mean  # Denormalize predictions
 
-<<<<<<< Updated upstream
     y_pred_cnn_train_norm = model_cnn.predict(X_train[..., np.newaxis]).flatten()
     y_pred_cnn_train = y_pred_cnn_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
     label_pred_cnn = y_pred_cnn - beta * x_thres
-=======
-######################################################
-################## Train a lightGBM model ############
-######################################################
-import lightgbm as lgb
-model_lgb = lgb.LGBMRegressor(n_estimators=10000, reg_alpha=0.5, max_depth=5, random_state=42)
-model_lgb.fit(X_train, y_train)
-y_pred_lgb = model_lgb.predict(X_test)
-y_pred_lgb = y_pred_lgb * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
->>>>>>> Stashed changes
 
     mse_cnn = mean_squared_error(y_test, y_pred_cnn)
     r2_cnn = r2_score(y_test, y_pred_cnn)
@@ -564,7 +408,6 @@ y_pred_lgb_train = model_lgb.predict(X_train) * y_train_std + y_train_mean  # De
     results['CNN Regressor']['y_pred_train'] = y_pred_cnn_train
     results['CNN Regressor']['label_pred'] = label_pred_cnn
 
-<<<<<<< Updated upstream
 if 'Random Forest Regressor' in models:
     results['Random Forest Regressor'] = {}
     # Train a Random Forest Regressor
@@ -577,17 +420,6 @@ if 'Random Forest Regressor' in models:
     mse_rf = mean_squared_error(y_test, y_pred_rf)
     r2_rf = r2_score(y_test, y_pred_rf)
     print(f"Random Forest Regressor - MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
-=======
-######################################################
-############ Random Forest Regressor #################
-######################################################
-from sklearn.ensemble import RandomForestRegressor
-model_rf = RandomForestRegressor(n_estimators=1000, max_depth=5, random_state=42)
-model_rf.fit(X_train, y_train)
-y_pred_rf = model_rf.predict(X_test)
-y_pred_rf = y_pred_rf * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_rf_train = model_rf.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
->>>>>>> Stashed changes
 
     # Feature importance plot
     importances = model_rf.feature_importances_
@@ -601,7 +433,6 @@ y_pred_rf_train = model_rf.predict(X_train) * y_train_std + y_train_mean  # Deno
     results['Random Forest Regressor']['label_pred'] = label_pred_rf
 
 
-<<<<<<< Updated upstream
 # Plot feature importance for all models
 models_plot_imp = [model for model in models if 'importance' in results[model]]  # Exclude CNN from importance plot
 nplot_1 = len(models_plot_imp)
@@ -619,71 +450,7 @@ for i in range(nplot_1):
 
 plt.tight_layout()
 plt.savefig(f'output/ft_imp_{symbol}_{label_name}_nMod{len(models)}_{label_name}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
-=======
-######################################################
-######### Linear regression ##########################
-######################################################
-from sklearn.linear_model import LinearRegression
-model_LR = LinearRegression()
-model_LR.fit(X_train, y_train)
-y_pred_LR = model_LR.predict(X_test)
-y_pred_LR = y_pred_LR * y_train_std + y_train_mean  # Denormalize predictions
-y_pred_LR_train = model_LR.predict(X_train) * y_train_std + y_train_mean  # Denormalize train predictions
 
-mse_LR = mean_squared_error(y_test, y_pred_LR)
-r2_LR = r2_score(y_test, y_pred_LR)
-print(f"Linear Regression - MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
-
-# Feature importance for linear regression (absolute value of coefficients)
-print(model_LR.coef_.shape)
-coef_importance = np.abs(model_LR.coef_)
-# coef_importance = model_LR.coef_
-indices_lr = np.argsort(coef_importance)[::-1]
-importance_xgb = model_xgb.feature_importances_
-indices_xgb = np.argsort(importance_xgb)[::-1]
-
-fig, axes = plt.subplots(1, 4, figsize=(24, 6))
-
-# Plot feature importance for Random Forest
-axes[0].set_title(f"Random Forest Feature Importances, MSE: {mse_rf:.4f}, R2: {r2_rf:.4f}")
-axes[0].bar(range(X_train.shape[1]), importances[indices], align="center")
-axes[0].set_xticks(range(X_train.shape[1]))
-axes[0].set_xticklabels([feature_cols[i] for i in indices], rotation=90)
-axes[0].set_xlim([-1, X_train.shape[1]])
-axes[0].set_ylabel("Importance")
-axes[0].set_xlabel("Feature")
-
-# Plot feature importance for XGBoost
-# Fix: Use XGBoost's own indices for sorting if desired, or keep RF indices for comparison. Keeping RF indices for consistency with original logic.
-axes[3].set_title(f"XGBoost Feature Importances, MSE: {mse_xgb:.4f}, R2: {r2_xgb:.4f}")
-axes[3].bar(range(X_train.shape[1]), model_xgb.feature_importances_[indices_xgb], align="center")
-axes[3].set_xticks(range(X_train.shape[1]))
-axes[3].set_xticklabels([feature_cols[i] for i in indices_xgb], rotation=90)
-axes[3].set_xlim([-1, X_train.shape[1]])
-axes[3].set_ylabel("Importance")
-axes[3].set_xlabel("Feature")
-
-# Plot feature importance for Linear Regression
-axes[1].set_title(f"Linear Regression Coefficient Importances, MSE: {mse_LR:.4f}, R2: {r2_LR:.4f}")
-axes[1].bar(range(X_train.shape[1]), coef_importance[indices_lr], align="center")
-axes[1].set_xticks(range(X_train.shape[1]))
-axes[1].set_xticklabels([feature_cols[i] for i in indices_lr], rotation=90)
-axes[1].set_xlim([-1, X_train.shape[1]])
-axes[1].set_ylabel("Coefficient Value")
-axes[1].set_xlabel("Feature")
-
-# Plot feature importance for LightGBM
-lgb_importances = model_lgb.feature_importances_
-indices_lgb = np.argsort(lgb_importances)[::-1]
-axes[2].set_title(f"LightGBM Feature Importances, MSE: {mse_lgb:.4f}, R2: {r2_lgb:.4f}")
-axes[2].bar(range(X_train.shape[1]), lgb_importances[indices_lgb], align="center")
-axes[2].set_xticks(range(X_train.shape[1]))
-axes[2].set_xticklabels([feature_cols[i] for i in indices_lgb], rotation=90)
-axes[2].set_xlim([-1, X_train.shape[1]])
-
-plt.tight_layout()
-plt.savefig(f'feature_imp_{label_name}_nFts{X_train.shape[1]}_d{delay_quantile}{start_or_exec}_nml{normalized}_mode{mode}_{operation_select}.png', bbox_inches='tight')
->>>>>>> Stashed changes
 plt.show()
 
 fig2, axes2 = plt.subplots(len(models), 2, figsize=(18, 16))
@@ -710,11 +477,8 @@ for i, model_name in enumerate(models):
     axes2[i,1].legend()
 
 plt.tight_layout()
-<<<<<<< Updated upstream
 plt.savefig(f'output/pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
-=======
-plt.savefig(f'true_vs_pred_{label_name}_nFts{X_train.shape[1]}_d{delay_quantile}{start_or_exec}_nml{normalized}_mode{mode}_{operation_select}.png', bbox_inches='tight')
->>>>>>> Stashed changes
+
 plt.show()
 
 fig3, axes3 = plt.subplots(1, len(models), figsize=(18, 6))
