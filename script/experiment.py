@@ -22,14 +22,14 @@ import seaborn as sns
 results = {}
 models = ['OLS Regression', 'Linear Regression',  
           'LightGBM Regressor', 'XGBoost Regressor', 
-          'Random Forest Regressor', 'CNN Regressor', 
+          'Random Forest Regressor', # 'CNN Regressor', 
           ]
 
 TOLERENCE = 1e-12
 
 mode = 2
-delay_exec = ''
-# delay_exec = '_2'
+# delay_exec = ''
+delay_exec = '_2'
 normalize_X = 0
 operation = 'open2'
 # operation = 'close2'
@@ -111,18 +111,19 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 df = filtered_df[selected_cols].dropna()
 
 feature_cols = ['threshold', 
-                'basis_expected', 
+                # 'basis_expected', 
                 # 'spot_midprice_mean', 
                 'spot_midprice_std', 
                 # 'spot_spread_mean', 
-                'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                 'basis_bid_open', 
-                'basis_ask_close', 'basis_bid_close', 
-                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                 'basis_bid_low', 
+                # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
+                #  'spot_midprice_low', 'swap_midprice_mean', 
+                'swap_midprice_std', 
+                #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
+                #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
+                #  'basis_bid_open', 
+                # 'basis_ask_close', 'basis_bid_close', 
+                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
+                #  'basis_bid_low', 
                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
                 # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
                 # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
@@ -151,10 +152,10 @@ df['basis_ask_close_to_thres'] = (df['basis_ask_close'] - df['threshold'])
 df['basis_bid_close_to_thres'] = (df['basis_bid_close'] - df['threshold'])
 
 # feature_cols.append('basis_expected_to_thres')
-# feature_cols.append('basis_ask_k_volatility')
-# feature_cols.append('basis_bid_k_volatility')
+feature_cols.append('basis_ask_k_volatility')
+feature_cols.append('basis_bid_k_volatility')
 # feature_cols.append('basis_close_to_thres')
-# feature_cols.append('basis_mid_to_thres')
+feature_cols.append('basis_mid_to_thres')
 # feature_cols.append('basis_ask_close_to_thres')
 # feature_cols.append('basis_bid_close_to_thres')
 
@@ -165,7 +166,7 @@ feature_cols.append('const.')
 # feature_cols.append('basis_executed_to_thres')
 
 # Visualize correlation
-label_names = ['basis_slippage', 'gain_vs_threshold']
+label_names = ['gain_vs_threshold']
 df_corr = df[feature_cols + label_names].corr()
 corr_matrix = df_corr.corr()
 # 3. Plot using Seaborn
