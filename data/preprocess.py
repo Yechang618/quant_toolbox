@@ -198,6 +198,7 @@ def process_single_record(
         
         # Get execution timestamp (ms)
         exec_ts = record_dict.get('taker_swap_haircut_executed_ts')
+        # exec_ts = record_dict.get('timer_start_ts')
         if pd.isna(exec_ts):
             logger.warning(f"Missing execution timestamp for record")
             return None
@@ -234,12 +235,13 @@ def process_single_record(
             # Meta
             'symbol': symbol,
             'trade_mode': record_dict.get('trade_mode'),
+            'operation': record_dict.get('operation'),
             'exec_ts_utc': parse_timestamp(exec_ts),
             
             # Time fields
             'execute_delay_ms': record_dict.get('execute_delay_ms'),
             'timer_start_ts': record_dict.get('timer_start_ts'),
-            'taker_exec_ts': exec_ts,
+            'taker_exec_ts': record_dict.get('taker_swap_haircut_executed_ts'),
             
             # Price fields
             'threshold': record_dict.get('threshold'),
@@ -344,8 +346,15 @@ def run_pipeline(
     symbols_completed = 0
     
     # === MODIFIED: Process and save per symbol ===
-    processed_symbols = ['1MBABYDOGEUSDT', 'DEXEUSDT','DIAUSDT','FXSUSDT','GLMUSDT',
-                         'GPSUSDT', 'PROMUSDT', 'SANTOSUSDT', 'ZENUSDT']
+    # processed_symbols = ['1MBABYDOGEUSDT', '1000CATUSDT', '1000CHEEMUSDT',
+    #                      'ACHUSDT', 'AIUSDT', 'AIXBTUSDT', 'BCHUSDT', 'CHZUSDT',
+    #                      'CUSDT', 'DEXEUSDT','DIAUSDT', 'DUSKUSDT', 'FORMUSDT', 'FXSUSDT',
+    #                      'GLMUSDT', 'GPSUSDT', 'HBARUSDT', 'HIVEUSDT', 'HUMAUSDT', 
+    #                      'JUPUSDT', 'MOVRUSDT', 'NEIROUSDT', 'OGUSDT', 'ORDIUSDT',
+    #                      'PHAUSDT', 'PROMUSDT', 'PROVEUSDT', 'QNTUSDT', 'SANTOSUSDT', 
+    #                      'SCRTUSDT', 'SYSUSDT', 'TSTUSDT', 'TWTUSDT', 'XVGUSDT', 
+    #                      'YFIUSDT', 'ZENUSDT']
+    processed_symbols = []
     for symbol_idx, symbol in enumerate(unique_symbols, 1):
         if symbol in processed_symbols:
             logger.info(f"Skipping already processed symbol: {symbol}")
