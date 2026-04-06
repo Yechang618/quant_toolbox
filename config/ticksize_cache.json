@@ -1,50 +1,9 @@
 {
-<<<<<<< Updated upstream
-  "timestamp": 1774961335.3934243,
+  "timestamp": 1775496713.2270908,
   "data": {
-    "NEIROUSDT_spot": 1e-08,
-    "NEIROUSDT_swap": 1e-08,
-    "ACHUSDT_spot": 1e-05,
-    "ACHUSDT_swap": 1e-06,
-    "HBARUSDT_spot": 1e-05,
-    "HBARUSDT_swap": 1e-05,
-    "AIUSDT_spot": 0.0001,
-    "AIUSDT_swap": 1e-05,
-    "QNTUSDT_spot": 0.01,
-    "QNTUSDT_swap": 0.01,
-    "SCRTUSDT_spot": 0.0001,
-    "SCRTUSDT_swap": 1e-05,
-    "BCHUSDT_spot": 0.1,
-    "BCHUSDT_swap": 0.01
-=======
-  "timestamp": 1774922080.8488264,
-  "data": {
-    "DEXEUSDT_spot": 0.001,
-    "DEXEUSDT_swap": 0.001,
-    "FXSUSDT_spot": 0.001,
-    "FXSUSDT_swap": 0.0001,
-    "SANTOSUSDT_spot": 0.001,
-    "SANTOSUSDT_swap": 0.001,
-    "1000CHEEMSUSDT_spot": 1e-06,
-    "1000CHEEMSUSDT_swap": 1e-07,
-    "PROVEUSDT_spot": 0.0001,
-    "PROVEUSDT_swap": 0.0001,
-    "FORMUSDT_spot": 0.0001,
-    "FORMUSDT_swap": 0.0001,
-    "ORDIUSDT_spot": 0.001,
-    "ORDIUSDT_swap": 0.001,
-    "XVGUSDT_spot": 1e-06,
-    "XVGUSDT_swap": 1e-06,
-    "HUMAUSDT_spot": 1e-05,
-    "HUMAUSDT_swap": 1e-06,
-    "1000CATUSDT_spot": 1e-05,
-    "1000CATUSDT_swap": 1e-06,
-    "PHAUSDT_spot": 0.0001,
-    "PHAUSDT_swap": 1e-05,
-    "CHZUSDT_spot": 1e-05,
-    "CHZUSDT_swap": 1e-05,
-    "CUSDT_spot": 0.0001,
-    "CUSDT_swap": 1e-05
->>>>>>> Stashed changes
+    "DIAUSDT_spot": 0.0001,
+    "DIAUSDT_swap": 0.0001,
+    "AAVEUSDT_spot": 0.01,
+    "AAVEUSDT_swap": 0.01
   }
 }

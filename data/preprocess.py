@@ -205,16 +205,17 @@ def process_single_record(
         
         # Define time window
         window_start_ms = exec_ts - window_sec * 1000
+        window_end_ms = exec_ts + window_sec * 1000
         
         # Filter market data to window
         ob_window = ob_df[
             (ob_df['ts_ms'] >= window_start_ms) & 
-            (ob_df['ts_ms'] <= exec_ts)
+            (ob_df['ts_ms'] <= window_end_ms)
         ].copy() if not ob_df.empty else pd.DataFrame()
         
         tf_window = tf_df[
             (tf_df['ts_ms'] >= window_start_ms) & 
-            (tf_df['ts_ms'] <= exec_ts)
+            (tf_df['ts_ms'] <= window_end_ms)
         ].copy() if not tf_df.empty else pd.DataFrame()
         
         # Get ticksize
@@ -237,6 +238,8 @@ def process_single_record(
             'trade_mode': record_dict.get('trade_mode'),
             'operation': record_dict.get('operation'),
             'exec_ts_utc': parse_timestamp(exec_ts),
+            'window_start_ms': window_start_ms,
+            'window_end_ms': window_end_ms,
             
             # Time fields
             'execute_delay_ms': record_dict.get('execute_delay_ms'),
