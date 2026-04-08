@@ -22,13 +22,14 @@ import seaborn as sns
 results = {}
 models = ['OLS Regression', 'Linear Regression',  
           'LightGBM Regressor', 'XGBoost Regressor', 
-          'Random Forest Regressor', # 'CNN Regressor', 
+          'Random Forest Regressor',  #'CNN Regressor', 
           ]
 
 TOLERENCE = 1e-12
 mode = 2
 # delay_exec = ''
-delay_exec = '_2'
+# delay_exec = '_2'
+delay_exec = '_3'
 normalize_X = 0
 operation = 'open2'
 # operation = 'close2'
@@ -57,29 +58,50 @@ combined_df = pd.concat(df_list, ignore_index=True)
 print(f"Combined {len(csv_files)} files")
 print(f"Total rows: {len(combined_df)}")
 print(combined_df.info())
+print(f"List of feature columns: {combined_df.columns.tolist()}")
 
-selected_cols = ['gain_vs_threshold', 'basis_slippage', 'operation',
-'symbol', 'trade_mode', 'exec_ts_utc',
-'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts',
-'threshold', 'basis_expected', 'basis_executed',
-'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean',
-'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high',
-'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std',
-'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks',
-'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open',
-'basis_bid_open', 'basis_ask_close', 'basis_bid_close',
-'basis_ask_high', 'basis_bid_high', 'basis_ask_low',
-'basis_bid_low',
-'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean',
-'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks',
-'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks',
-'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s',
-'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s',
-'swap_trade_count_60s',
-# 'swap_buy_trade_ratio',
-# 'spot_basis_slippage_ticks',
-# 'spread_ticks', 'depth_imbalance_mean', 'volatility_ticks', 'trade_volume_60s'
-]
+selected_cols = ['gain_vs_threshold', 'basis_slippage', 
+                 'symbol', 'trade_mode', 'operation', 
+                 'exec_ts_utc', 'window_start_ms', 'window_end_ms', 
+                 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts', 
+                 'threshold', 'basis_expected', 'basis_executed', 
+                 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean', 
+                 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 'spot_midprice_low', 
+                 'swap_midprice_mean', 'swap_midprice_std', 'swap_spread_mean', 
+                 'swap_spread_ticks', 'spot_spread_ticks', 
+                 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_std', 'basis_bid_std', 
+                 'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 'basis_bid_low', 
+                 'basis_ask_adjusted_mean', 'basis_bid_adjusted_mean', 'basis_ask_adjusted_std', 'basis_bid_adjusted_std', 
+                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
+                 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 
+                 'spot_volatility_ticks', 'swap_volatility_ticks', 
+                 'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s', 
+                 'spot_bid_price_mean', 'spot_ask_price_mean', 
+                 'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s', 'swap_trade_count_60s', 
+                 'swap_bid_price_mean', 'swap_ask_price_mean', 'swap_buy_trade_ratio', 'basis_slippage_ticks', 
+                #  'spread_ticks', 'depth_imbalance_mean', 'volatility_ticks', 'trade_volume_60s'
+                 ]
+
+# selected_cols = ['gain_vs_threshold', 'basis_slippage', 'operation',
+# 'symbol', 'trade_mode', 'exec_ts_utc',
+# 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts',
+# 'threshold', 'basis_expected', 'basis_executed',
+# 'spot_midprice_mean', 'spot_midprice_std', 'spot_spread_mean',
+# 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high',
+# 'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std',
+# 'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks',
+# 'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open',
+# 'basis_bid_open', 'basis_ask_close', 'basis_bid_close',
+# 'basis_ask_high', 'basis_bid_high', 'basis_ask_low',
+# 'basis_bid_low',
+# 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean',
+# 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks',
+# 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks',
+# 'spot_price_return_60s', 'swap_price_return_60s', 'spot_trade_volume_60s',
+# 'spot_trade_count_60s', 'spot_buy_trade_ratio', 'swap_trade_volume_60s',
+# 'swap_trade_count_60s',
+# ]
 
 # Sort by exec_ts_utc
 # combined_df['exec_ts_utc'] = pd.to_datetime(combined_df['exec_ts_utc'])
@@ -92,12 +114,12 @@ combined_df = combined_df.sort_values('exec_ts_utc')
 
 # print(combined_df['execute_delay_ms'].describe())
 
-operation_select = 'open2'
-# operation_select = 'close2'
+# operation_select = 'open2'
+operation_select = 'close2'
 delay_quantile = 30 # Filter out rows with execute_delay_ms above the 50th percentile (median) to focus on more typical cases. Adjust as needed (e.g., 80 for 80th percentile).
 # Filter out outliers based on the 95th percentile of execute_delay_ms
-upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_precentile/100)
-print(f"{delay_precentile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
+upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_quantile/100)
+print(f"{delay_quantile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
 filtered_df = combined_df[combined_df['execute_delay_ms'] <= upper_limit_delay]
 
 # Filter out outliers based on the 10th and 90th percentiles of gain_vs_threshold
@@ -115,30 +137,53 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 df = filtered_df[selected_cols].dropna()
 feature_cols = ['threshold', 
                 # 'basis_expected', 
-                # 'spot_midprice_mean', 
-                'spot_midprice_std', 
-                # 'spot_spread_mean', 
-                # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                #  'spot_midprice_low', 'swap_midprice_mean', 
-                'swap_midprice_std', 
-                #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
-                #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
-                #  'basis_bid_open', 
-                # 'basis_ask_close', 'basis_bid_close', 
-                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
-                #  'basis_bid_low', 
-                'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
-                # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
-                # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
-                'spot_price_return_60s', 'swap_price_return_60s', 
-                'spot_trade_volume_60s', 
-                'spot_trade_count_60s', 
-                'spot_buy_trade_ratio', 
-                'swap_trade_volume_60s', 
-                'swap_trade_count_60s', 
-                # 'basis_slippage_rate'
-                # 'spot_basis_slippage_ticks', 
-                ]
+                #  'spot_midprice_mean', 'spot_spread_mean', 
+                #  'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 'spot_midprice_low', 
+                #  'swap_midprice_mean', 'swap_spread_mean', 
+                #  'spot_midprice_std', 'swap_midprice_std', 
+                #  'swap_spread_ticks', 'spot_spread_ticks', 
+                #  'basis_ask_mean', 'basis_bid_mean', 
+                #  'basis_ask_std', 'basis_bid_std', 
+                #  'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 'basis_bid_low', 
+                #  'basis_ask_adjusted_mean', 'basis_bid_adjusted_mean', 
+                #  'basis_ask_adjusted_std', 'basis_bid_adjusted_std', 
+                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
+                #  'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 
+                #  'spot_volatility_ticks', 'swap_volatility_ticks', 
+                #  'spot_price_return_60s', 'swap_price_return_60s', 
+                #  'spot_trade_volume_60s', 'swap_trade_volume_60s',
+                #  'spot_bid_price_mean', 'spot_ask_price_mean', 
+                #  'spot_trade_count_60s',  'swap_trade_count_60s', 
+                #  'swap_bid_price_mean', 'swap_ask_price_mean', 
+                 'swap_buy_trade_ratio', 'spot_buy_trade_ratio', 
+                 ]
+# feature_cols = ['threshold', 
+#                 # 'basis_expected', 
+#                 # 'spot_midprice_mean', 
+#                 'spot_midprice_std', 
+#                 # 'spot_spread_mean', 
+#                 # 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
+#                 #  'spot_midprice_low', 'swap_midprice_mean', 
+#                 'swap_midprice_std', 
+#                 #  'swap_spread_mean', 'swap_spread_ticks', 'spot_spread_ticks', 
+#                 #  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_open', 
+#                 #  'basis_bid_open', 
+#                 # 'basis_ask_close', 'basis_bid_close', 
+#                 #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 
+#                 #  'basis_bid_low', 
+#                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 
+#                 # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
+#                 # 'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 
+#                 'spot_price_return_60s', 'swap_price_return_60s', 
+#                 'spot_trade_volume_60s', 
+#                 'spot_trade_count_60s', 
+#                 'spot_buy_trade_ratio', 
+#                 'swap_trade_volume_60s', 
+#                 'swap_trade_count_60s', 
+#                 # 'basis_slippage_rate'
+#                 # 'spot_basis_slippage_ticks', 
+#                 ]
 print(f"Selected {len(feature_cols)} features")
 
 
@@ -147,21 +192,47 @@ df['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df[
 df['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
 df['basis_bid_k_volatility'] = (df['basis_bid_high'] - df['basis_bid_low']) / (np.abs(df['basis_bid_close'] - df['basis_bid_open']) + 1e-12)
 
+basis_mid_adjusted_mean = (df['basis_ask_adjusted_mean'] + df['basis_bid_adjusted_mean']) / 2
+
 basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
 df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
+df['basis_adjusted_mid_to_thres'] = (basis_mid_adjusted_mean - df['threshold']) 
 basis_close_mid = (df['basis_ask_close'] + df['basis_bid_close']) / 2
 df['basis_close_to_thres'] = (basis_close_mid - df['threshold'])
 df['basis_expected_to_thres'] = (df['basis_expected'] - df['threshold'])
 df['basis_ask_close_to_thres'] = (df['basis_ask_close'] - df['threshold'])
 df['basis_bid_close_to_thres'] = (df['basis_bid_close'] - df['threshold'])
+df['basis_std_to_mean'] = (df['basis_ask_std'] + df['basis_bid_std']) / (basis_mid_mean + 1e-12)
+df['spot_mid_std/abs(mean)'] = df['spot_midprice_std'] / (np.abs(df['spot_midprice_mean']) + 1e-12)
+df['swap_mid_std/abs(mean)'] = df['swap_midprice_std'] / (np.abs(df['swap_midprice_mean']) + 1e-12)
+df['basis_ask_adj_std/abs(mean)'] = df['basis_ask_adjusted_std'] / (np.abs(df['basis_ask_adjusted_mean']) + 1e-12)
+df['basis_bid_adj_std/abs(mean)'] = df['basis_bid_adjusted_std'] / (np.abs(df['basis_bid_adjusted_mean']) + 1e-12)
+df['trade_count_ratio'] = np.log(df['swap_trade_count_60s'] + 1) - np.log(df['spot_trade_count_60s'] + 1)
+df['trade_volume_ratio'] = np.log(df['swap_trade_volume_60s'] + 1) - np.log(df['spot_trade_volume_60s'] + 1)
+df['trade_count_total'] = df['swap_trade_count_60s'] + df['spot_trade_count_60s']
+df['trade_volume_total'] = df['swap_trade_volume_60s'] + df['spot_trade_volume_60s']
+df['sum_price_return_60s'] = df['spot_price_return_60s'] + df['swap_price_return_60s']
+
 
 # feature_cols.append('basis_expected_to_thres')
 feature_cols.append('basis_ask_k_volatility')
 feature_cols.append('basis_bid_k_volatility')
 # feature_cols.append('basis_close_to_thres')
-feature_cols.append('basis_mid_to_thres')
+# feature_cols.append('basis_mid_to_thres')
+feature_cols.append('basis_adjusted_mid_to_thres')
 # feature_cols.append('basis_ask_close_to_thres')
 # feature_cols.append('basis_bid_close_to_thres')
+feature_cols.append('basis_std_to_mean')
+feature_cols.append('spot_mid_std/abs(mean)')
+feature_cols.append('swap_mid_std/abs(mean)')
+feature_cols.append('basis_ask_adj_std/abs(mean)')
+feature_cols.append('basis_bid_adj_std/abs(mean)')
+feature_cols.append('trade_count_ratio')
+feature_cols.append('trade_volume_ratio')
+feature_cols.append('trade_count_total')
+feature_cols.append('trade_volume_total')
+feature_cols.append('sum_price_return_60s')
+
 
 df['const.'] = 1.0
 feature_cols.append('const.')
@@ -240,7 +311,8 @@ if 'OLS Regression' in models:
     label_pred = y_pred_ols - beta * x_thres  
 
     print(model_ols.summary())
-    importance_ols = model_ols.params[0:]  # Exclude intercept
+    # importance_ols = model_ols.params[0:]  # Exclude intercept
+    importance_ols = model_ols.tvalues[0:]
     indices_ols = np.argsort(np.abs(importance_ols))[::-1]
     mse_ols = mean_squared_error(y_test, y_pred_ols)
     r2_ols = r2_score(y_test, y_pred_ols)
