@@ -167,7 +167,7 @@ def create_carry_positions(countries, interest_rate_df, n_long_short=3):
     rank_max = len(countries)
     for col in countries:
         for i in range(len(df)):
-            df.loc[i, col+'_pos'] = 1 if df.loc[i, col+'_rank'] <= n_long_short else (-1 if df.loc[i, col+'_rank'] > rank_max - n_long_short else 0)  # Initialize position columns
+            df.loc[i, col+'_pos'] = 1 if df.loc[i, col+'_rank'] > rank_max - n_long_short else (-1 if df.loc[i, col+'_rank'] <= n_long_short else 0)  # Initialize position columns
 
     return df
 

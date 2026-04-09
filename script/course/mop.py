@@ -66,7 +66,7 @@ def solveAxb(Amatrix,bvec,n,iptr,jptr,kptr):
     inverseA=numpy.linalg.inv(A)
     x=inverseA@b
 #
-    for i in range(kptr,kptr+n-1+1):
+    for i in range(kptr,kptr+n-1+1):	
         xvec[i]=x[i-kptr]
 #
     return xvec
