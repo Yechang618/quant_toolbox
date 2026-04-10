@@ -34,7 +34,7 @@ def load_and_clean_carry_data(filepath='script/course/Carry.xlsx'):
             if col != 'Date' and df[col].dtype == 'object':
                 df[col] = df[col].astype(str).str.replace('%', '', regex=False).str.strip()
             if col != 'Date':
-                df[col] = pd.to_numeric(df[col], errors='coerce') / 100.0
+                df[col] = pd.to_numeric(df[col], errors='coerce')# / 100.0
         
         data_dict[sheet] = df
         print(f"✓ Loaded {sheet}: {df.shape[0]} rows, {df.shape[1]} columns")
@@ -138,15 +138,15 @@ def plot_us_rank_over_time(rank_df, save_path='us_rank_plot.png'):
     """
     plt.figure(figsize=(12, 5))
     plt.plot(rank_df['Date'], rank_df['US_rank'], linewidth=2, color='navy')
-    plt.axhline(y=1, color='green', linestyle='--', alpha=0.3, label='Lowest Rate (Rank=1)')
-    plt.axhline(y=9, color='red', linestyle='--', alpha=0.3, label='Highest Rate (Rank=9)')
+    plt.axhline(y=1, color='green', linestyle='--', alpha=0.7, label='Lowest Rate (Rank=1)')
+    plt.axhline(y=9, color='red', linestyle='--', alpha=0.7, label='Highest Rate (Rank=9)')
     plt.axhline(y=5, color='gray', linestyle=':', alpha=0.5, label='Median Rank')
     
     plt.xlabel('Date', fontsize=11)
     plt.ylabel('US Interest Rate Rank (1=Lowest, 9=Highest)', fontsize=11)
     plt.title('US Currency Rank Over Time', fontsize=14, fontweight='bold')
-    plt.legend(loc='upper right', fontsize=9)
-    plt.grid(True, alpha=0.3)
+    plt.legend(loc='best', fontsize=12)
+    plt.grid(True, alpha=0.5)
     plt.tight_layout()
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     print(f"\n✓ US rank plot saved to '{save_path}'")
