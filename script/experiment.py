@@ -26,14 +26,14 @@ models = ['OLS Regression', 'Linear Regression',
           ]
 
 TOLERENCE = 1e-12
-mode = 2
+mode = 0
 # delay_exec = ''
 # delay_exec = '_2'
 delay_exec = '_3'
 normalize_X = 0
-operation = 'open2'
-# operation = 'close2'
-delay_precentile = 30
+# operation = 'open2'
+operation = 'close2'
+delay_precentile = 50
 beta = 1
 symbol = 'all'
 # symbol = 'ZENUSDT'
@@ -218,8 +218,8 @@ df['sum_price_return_60s'] = df['spot_price_return_60s'] + df['swap_price_return
 feature_cols.append('basis_ask_k_volatility')
 feature_cols.append('basis_bid_k_volatility')
 # feature_cols.append('basis_close_to_thres')
-# feature_cols.append('basis_mid_to_thres')
-feature_cols.append('basis_adjusted_mid_to_thres')
+feature_cols.append('basis_mid_to_thres')
+# feature_cols.append('basis_adjusted_mid_to_thres')
 # feature_cols.append('basis_ask_close_to_thres')
 # feature_cols.append('basis_bid_close_to_thres')
 feature_cols.append('basis_std_to_mean')
@@ -228,7 +228,7 @@ feature_cols.append('swap_mid_std/abs(mean)')
 feature_cols.append('basis_ask_adj_std/abs(mean)')
 feature_cols.append('basis_bid_adj_std/abs(mean)')
 feature_cols.append('trade_count_ratio')
-feature_cols.append('trade_volume_ratio')
+# feature_cols.append('trade_volume_ratio')
 feature_cols.append('trade_count_total')
 feature_cols.append('trade_volume_total')
 feature_cols.append('sum_price_return_60s')
@@ -242,7 +242,7 @@ feature_cols.append('const.')
 
 # Visualize correlation
 label_names = ['gain_vs_threshold']
-df_corr = df[feature_cols + label_names].corr()
+df_corr = df[feature_cols + label_names]#.corr()
 corr_matrix = df_corr.corr()
 # 3. Plot using Seaborn
 plt.figure(figsize=(16, 12))
@@ -511,7 +511,7 @@ nplot_1 = len(models_plot_imp)
 fig, axes = plt.subplots(1, nplot_1, figsize=(24, 6))
 for i in range(nplot_1):
     axes[i].grid(True)
-    axes[i].set_title(f"{models_plot_imp[i]} Feature Imp. (sym: {symbol}, {label_name}),\n MSE: {results[models_plot_imp[i]]['MSE']:.4f}, R2: {results[models_plot_imp[i]]['R2']:.4f}")
+    axes[i].set_title(f"{models_plot_imp[i]} (sym: {symbol}, {label_name}),\n R2: {results[models_plot_imp[i]]['R2']:.4f}")
     # print(f"X_train shape: {X_train.shape}, importance shape: {results[models_plot_imp[i]]['importance'].shape}")
     axes[i].bar(range(X_train.shape[1]), results[models_plot_imp[i]]['importance'][results[models_plot_imp[i]]['indices']], align="center")
     axes[i].set_xticks(range(X_train.shape[1]))

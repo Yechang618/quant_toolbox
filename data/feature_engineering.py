@@ -215,12 +215,12 @@ def extract_window_features(
         ask_qty_swap = tf_window.loc[tf_window['trade_type'] == 'swap', 'ask_qty'].fillna(0)
         ask_px_swap = tf_window.loc[tf_window['trade_type'] == 'swap', 'ask_px'].fillna(0)
         ask_px_qty_swap = ask_px_swap * ask_qty_swap
-        features['spot_trade_volume_60s'] = format_float(tf_window['bid_qty'].fillna(0).sum())
+        features['spot_trade_volume_60s'] = format_float((bid_qty_spot + ask_qty_spot).sum())
         features['spot_bid_price_mean'] = format_float(bid_px_qty_spot.sum() / (bid_qty_spot.sum() + 1e-10)) if bid_qty_spot.sum() > 0 else np.nan
         features['spot_ask_price_mean'] = format_float(ask_px_qty_spot.sum() / (ask_qty_spot.sum() + 1e-10)) if ask_qty_spot.sum() > 0 else np.nan
         features['spot_trade_count_60s'] = len(tf_window.loc[tf_window['trade_type'] == 'spot'])
         features['spot_buy_trade_ratio'] = format_float(np.log(bid_px_qty_spot.sum() + 1e-10) - np.log(ask_px_qty_spot.sum() + 1e-10)) if ask_px_qty_spot.sum()*bid_px_qty_spot.sum() > 0 else np.nan
-        features['swap_trade_volume_60s'] = format_float(tf_window['bid_qty'].fillna(0).sum())
+        features['swap_trade_volume_60s'] = format_float((bid_qty_swap + ask_qty_swap).sum())
         features['swap_trade_count_60s'] = len(tf_window.loc[tf_window['trade_type'] == 'swap'])
         features['swap_bid_price_mean'] = format_float(bid_px_qty_swap.sum() / (bid_qty_swap.sum() + 1e-10)) if bid_qty_swap.sum() > 0 else np.nan
         features['swap_ask_price_mean'] = format_float(ask_px_qty_swap.sum() / (ask_qty_swap.sum() + 1e-10)) if ask_qty_swap.sum() > 0 else np.nan
