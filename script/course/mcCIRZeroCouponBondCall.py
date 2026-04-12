@@ -3,7 +3,7 @@ import statistics
 from math import exp,sqrt
 #
 #----------------------------------------------------------------------------------
-def mcCIRZeroCouponBondCall(a,b,sigma,r0,strike,par,timeMaturity,uBondTimeMaturity,nstep,nsample):
+def mcCIRZeroCouponBondCall(a,b,sigma,rinit,strike,par,timeMaturity,uBondTimeMaturity,nstep,nsample):
     snn=None
 #
     dt=timeMaturity/nstep
@@ -38,14 +38,14 @@ def payoff(bondPrice,strike):
     return max(bondPrice-strike,0)
 #
 #----------------------------------------------------------------------------------
-def mcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
+def mcCIRZeroCouponBondPrice(a,b,sigma,rinit,par,timeMaturity,nstep,nsample):
     snn=None
 #
     dt=timeMaturity/nstep
 #
     dcfsample=[]
     for Ls in range(nsample):
-        r=r0
+        r=rinit
         y=r*(dt/2)
         skipFlag=False
         for i in range(nstep):
@@ -68,8 +68,8 @@ def mcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
 #----------------------------------------------------------------------------------
 rand.seedinit(5678)
 #
-a,b,rinit,sigma,timeMaturity,uBondTimeMaturity,par,strike,nstep,nsample=0.1,0.1,0.03,0.015,0.5,1.0,100,70,100,100
+a,b,r0,sigma,timeMaturity,uBondTimeMaturity,par,strike,nstep,nsample=0.1,0.1,0.03,0.015,0.5,1.0,100,70,100,100
 #
-optionprice,error=mcCIRZeroCouponBondCall(a,b,sigma,rinit,strike,par,timeMaturity,uBondTimeMaturity,nstep,nsample)
+optionprice,error=mcCIRZeroCouponBondCall(a,b,sigma,r0,strike,par,timeMaturity,uBondTimeMaturity,nstep,nsample)
 print(optionprice,error)
 #

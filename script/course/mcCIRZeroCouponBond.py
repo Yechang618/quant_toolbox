@@ -4,14 +4,14 @@ from math import exp,sqrt
 import numpy
 #
 #----------------------------------------------------------------------------------
-def mcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
+def mcCIRZeroCouponBondPrice(a,b,sigma,rinit,par,timeMaturity,nstep,nsample):
     snn=None
 #
     dt=timeMaturity/nstep
 #
     dcfsample=[]
     for Ls in range(nsample):
-        r=r0
+        r=rinit
         y=r*(dt/2)
         skipFlag=False
         for i in range(nstep):
@@ -32,7 +32,7 @@ def mcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
     return sampleMean,stderr
 #
 #----------------------------------------------------------------------------------
-def cmcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
+def cmcCIRZeroCouponBondPrice(a,b,sigma,rinit,par,timeMaturity,nstep,nsample):
     snn=None
 #
     dt=timeMaturity/nstep
@@ -40,14 +40,14 @@ def cmcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
     g,h=[],[]
     dcfsample=[]
     for Ls in range(nsample):
-        r,rc=r0,r0
+        r,rc=rinit,rinit
         y=r*(dt/2)
         yc=rc*(dt/2)
         skipFlag=False
         for i in range(nstep):
             snn=rand.stdnormnum(snn)
             r+=a*(b-r)*dt+sigma*sqrt(r)*sqrt(dt)*snn[0]
-            rc+=a*(b-rc)*dt+sigma*sqrt(dt)*snn[0]
+            rc+=a*(b-rc)*dt+sigma*sqrt(rinit)*sqrt(dt)*snn[0]
             if(r<0 or rc<0): 
                 skipFlag=True             
                 break
@@ -66,27 +66,27 @@ def cmcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
     for Ls in range(len(g)):
         dcfsample.append(g[Ls]-alpha*h[Ls])
 #
-    sampleMean=statistics.mean(dcfsample)+alpha*vasicekZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity)
+    sampleMean=statistics.mean(dcfsample)+alpha*vasicekZeroCouponBondPrice(a,b,sigma*sqrt(rinit),r0,par,timeMaturity)
     stderr=(statistics.stdev(dcfsample))/sqrt(nsample)
 #
     return sampleMean,stderr
 #
 #----------------------------------------------------------------------------------
-def vasicekZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity):
+def vasicekZeroCouponBondPrice(a,b,sigma,rinit,par,timeMaturity):
     Bfunc=(1/a)*(1-exp(-a*timeMaturity))
     Afunc=exp((1/a**2)*(Bfunc-timeMaturity)*(a**2*b-(1/2)*sigma**2)-sigma**2*Bfunc**2/(4*a))
-    bondPrice=par*Afunc*exp(-Bfunc*r0)
+    bondPrice=par*Afunc*exp(-Bfunc*rinit)
     return bondPrice
 #
 #----------------------------------------------------------------------------------
-def amcCIRZeroCouponBondPrice(a,b,sigma,r0,par,timeMaturity,nstep,nsample):
+def amcCIRZeroCouponBondPrice(a,b,sigma,rinit,par,timeMaturity,nstep,nsample):
     snn=None
 #
     dt=timeMaturity/nstep
 #
     dcfsample=[]
     for Ls in range(nsample):
-        r,ra=r0,r0
+        r,ra=rinit,rinit
         y=r*(dt/2)
         ya=ra*(dt/2)
         skipFlag=False

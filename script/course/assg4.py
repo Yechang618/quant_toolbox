@@ -30,6 +30,31 @@ def loadData():
          [7,0.014],[18,0.015]]
     return a,b 
 
+# def interpolation(n,knots,splineCoeff,xint):
+# #
+# #  extract all x with labels [1 to n]
+#     x=[0 for i in range(n+1)]
+#     for i in range(1,n+1):x[i]=knots[i-1][0]   
+# #
+# #  interpolate yint for xint
+#     if xint < x[1]:
+#         a,b,c,d=splineCoeff[0][0:4]
+#         yint=a+b*xint+c*xint**2+d*xint**3
+#         return yint
+#     elif xint > x[n]:
+#         a,b,c,d=splineCoeff[n-2][0:4]
+#         yint=a+b*xint+c*xint**2+d*xint**3
+#         return yint
+#     for k in range(1,n):
+#         if(xint>=x[k] and xint<=x[k+1]):
+#             a,b,c,d=splineCoeff[k-1][0:4]
+#             yint=a+b*xint+c*xint**2+d*xint**3
+#             break
+
+#     return yint
+#
+#---------------------------------------------------------------------------------
+
 # #----------------------------------------------------------------------------------
 # def genBondData(rzero,bondVol,timeInc,m):
 # #
@@ -62,13 +87,16 @@ def bondOptionTree(optionMaturity,
 # 
     nCoupon=len(uBondCoupon)
     timeHorizon=uBondMaturity
+    print(f"rzero: {rzero}")
     n=int(timeHorizon/rzero[0][0])
     timeInc=timeHorizon/n
+    print(f"timeInc: {timeInc}, n: {n}")
 #
     marketBondPrices = gbd.genBondData(rzero,bondVol,timeInc,n+1)
     treeRate=irTree.irTree(timeHorizon,n,treeType,marketBondPrices,prec)
 #
     H=int(optionMaturity/timeInc)
+    print(f"Option maturity steps: {H}")
 #
     Bf=[[] for i in range(0,(n+1)+1)]  
     fTree=[[] for i in range(0,H+1)]  
@@ -113,91 +141,102 @@ def payoff(assetPrice,strike, upperBarrier, lowerBarrier):
         return 0
     
 #
+
 #----------------------------------------------------------------------------------
-def mcHoLeeZeroCouponBondCall(a,
-                              b,
-                              marketBondPrices,
-                              r0,
-                              strike,
-                              par,
-                              timeMaturity,
-                              uBondTimeMaturity,
-                              nstep,
-                              nsample):
-    snn=None
-#
-    dt = timeMaturity / nstep
-#
-    m=int(nstep*(uBondTimeMaturity-timeMaturity)/timeMaturity)
-#
-    dcfsample=[]
-    for Ls in range(nsample):
-        r = r0
-        y = r * (dt / 2)
-        skipFlag = False
-        for i in range(nstep):
-            snn = rand.stdnormnum(snn)
-            r += a * (b - r) * dt + sigma * sqrt(r) * sqrt(dt) * snn[0]
-            if (r < 0): 
-                skipFlag = True             
-                break
-            if (i == nstep-1): y += r * (dt / 2)
-            else: y += r * dt
-#
-        if(not skipFlag):
-            uBondPrice, error = mcHoLeeZeroCouponBondPrice(a,
-                                                         b,
-                                                         marketBondPrices,
-                                                         r,
-                                                         par,
-                                                         uBondTimeMaturity - timeMaturity,
-                                                         m,
-                                                         nsample)
-            dcfsample.append(exp(-y) * payoff(uBondPrice, strike))
-#
-    sampleMean = statistics.mean(dcfsample)
-    stderr = (statistics.stdev(dcfsample)) / sqrt(nsample)
-#
-    return sampleMean, stderr
-#
-#----------------------------------------------------------------------------------
-def payoff(bondPrice,strike):
-    return max(bondPrice-strike,0)
-#
-#----------------------------------------------------------------------------------
-def mcHoLeeZeroCouponBondPrice(a,
-                               b,
-                               marketBondPrices,
-                               r0,
-                               par,
-                               timeMaturity,
-                               nstep,
-                               nsample):
+def mcHoLeeZCBCall(marketBondPrices,
+                   strike,
+                   par,
+                   upperBarrier,
+                   lowerBarrier,
+                   timeMaturity,
+                   uBondTimeMaturity,
+                   nstep,
+                   nsample):
     snn=None
 #
     dt=timeMaturity/nstep
 #
-    # timeMaturity,zeroBondPrice,vol = gbd.genBondData
+    m=int(nstep*(uBondTimeMaturity-timeMaturity)/timeMaturity)
+#
     dcfsample=[]
+    _, P0, vol0 = marketBondPrices[1]
+    r0 = - log(P0) / dt
+    sigma = vol0 / dt
     for Ls in range(nsample):
         r=r0
         y=r*(dt/2)
         skipFlag=False
+        rnd = np.random.normal(0, 1, nstep)
+        rList = [r0]
         for i in range(nstep):
-            snn=rand.stdnormnum(snn)
-            #
-            timeMaturity,zeroBondPrice,vol = marketBondPrices[i]
-            #
-            sigma = vol/dt
-            if i == 0:
-                P0 = marketBondPrices[0][1]
-                P2 = 
-                dFdt = log()
-            r+=a*(b-r)*dt+sigma*sqrt(r)*sqrt(dt)*snn[0]
-            if(r<0): 
-                skipFlag=True             
-                break
+            t = i*dt
+            dFdt, sigma = get_dFdt(marketBondPrices, i, dt)
+            r += (dFdt + sigma * sigma * t) * dt + sigma * sqrt(dt) * rnd[i]
+            # if(r<0): 
+            #     skipFlag=True             
+            #     break
+            rList.append(r)
             if(i==nstep-1): y+=r*(dt/2)
+            else: y+=r*dt
+#
+        if(not skipFlag):
+            P, _ = mcHoLeeZCBPrice(marketBondPrices,
+                                             sigma,
+                                             r,
+                                             par,
+                                             uBondTimeMaturity-timeMaturity,
+                                             i,
+                                             m, nsample)
+            if not (lowerBarrier < P < upperBarrier):
+                # print(f"Simulated bond price {P} breached barrier at maturity, skipping payoff calculation.")
+                dcfsample.append(0)
+                break
+            for i in range(nstep-1, -1, -1):
+                P = P * exp(-rList[i]*dt)
+                # print(f"Discounted bond price at time step {i}: {P}, with rate {rList[i]}")
+                if not (lowerBarrier < P < upperBarrier):
+                    # print(f"Simulated bond price {P} breached barrier at time step {i}, skipping payoff calculation.")
+                    dcfsample.append(0)
+                    break
+            dcfsample.append(exp(-y)*payoff_mc(P,strike))
+#
+
+    print(f"Simulated {len(dcfsample)} valid bond price paths out of {nsample} samples.")
+    sampleMean=statistics.mean(dcfsample)
+    stderr=(statistics.stdev(dcfsample))/sqrt(nsample)
+#
+    return sampleMean,stderr
+#
+#----------------------------------------------------------------------------------
+def payoff_mc(bondPrice,strike):
+    return max(bondPrice-strike,0)
+#
+#----------------------------------------------------------------------------------
+def mcHoLeeZCBPrice(marketBondPrices, 
+                    sigma, 
+                    rinit, 
+                    par, 
+                    timeMaturity, 
+                    m0,
+                    m, nsample):
+    snn=None
+#
+    dt=timeMaturity/m
+#
+    dcfsample=[]
+    for Ls in range(nsample):
+        r=rinit
+        y=r*(dt/2)
+        skipFlag=False
+        rnd = np.random.normal(0, 1, m)
+        for i in range(m):
+            t = i*dt
+            dFdt, sigma = get_dFdt(marketBondPrices, m0 + i, dt)
+            r += (dFdt + sigma * sigma * t) * dt + sigma * sqrt(dt) * rnd[i]
+            # if(r<0): 
+            #     skipFlag=True             
+            #     break
+            if(i==m-1): y+=r*(dt/2)
             else: y+=r*dt
 #
         if(not skipFlag):
@@ -205,9 +244,88 @@ def mcHoLeeZeroCouponBondPrice(a,
 #
     sampleMean=statistics.mean(dcfsample)
     stderr=(statistics.stdev(dcfsample))/sqrt(nsample)
-#
-    return sampleMean,stderr
 
+#
+    return sampleMean, stderr
+#----------------------------------------------------------------------------------
+def get_dFdt(marketBondPrices, i, dt):
+    if i == 0:
+        P0 = marketBondPrices[0][1]
+        P1 = marketBondPrices[1][1]
+        P2 = marketBondPrices[2][1]
+        dFdt = log(P1**2/P0/P2)/dt/dt
+        sigma = marketBondPrices[1][2] / dt
+    else:
+        Pt = marketBondPrices[i][1] 
+        Pt1 = marketBondPrices[i+1][1]
+        Pt_1 = marketBondPrices[i-1][1]
+        dFdt = log(Pt**2/Pt1/Pt_1)/dt/dt
+        sigma = marketBondPrices[i][2] / dt
+    sigma = marketBondPrices[1][2] / dt
+    return dFdt, sigma
+
+def mcHoLeeZeroCouponBondCall_v2(marketBondPrices,
+                              strike,
+                              par,
+                              timeMaturity,
+                              upperBarrier,
+                              lowerBarrier,
+                              uBondTimeMaturity,
+                              timeInc,
+                              nStepOptions,
+                              nsample):
+    snn = None
+#
+    dt = timeMaturity / nStepOptions
+#
+    nStepBond = int(nStepOptions*uBondTimeMaturity/timeMaturity)
+#
+    dcfsample=[]
+    _, P0, vol0 = marketBondPrices[1]
+    r0 = - log(P0) / dt
+    sigma = vol0 / dt
+    print(f"r: {r0}, sigma: {sigma}")    
+    for Ls in range(nsample):
+        r = r0
+        y = r*(dt/2)
+        skipFlag=False
+        knockoutFlag=False
+        rList = [r0]
+        rnd = np.random.normal(0, 1, nStepBond)
+        for i in range(nStepBond):
+            # snn=rand.stdnormnum(snn)
+            snn = [rnd[i], 1]
+            t = i*dt
+            dFdt = get_dFdt(marketBondPrices, i, dt)
+            r += (dFdt + sigma * sigma * t) * dt + sigma * sqrt(dt) * snn[0]
+            # if(r<0): 
+            #     skipFlag=True             
+            #     break
+            rList.append(r)
+            if  (i == nStepOptions - 1): y+=r*(dt/2)
+            elif i < nStepOptions - 1: y += r*dt
+
+        if skipFlag:
+            continue
+        z = 0
+        # if rList[-1] > 0:
+        #     print(f"Simulated short rate path: {rList}")
+        for i in range(nStepBond -1, -1, -1):
+            if i == nStepBond - 1:
+                z += rList[i] * (dt/2)
+            else:
+                z += rList[i] * dt
+            if i < nStepOptions and not (lowerBarrier < exp(-z)*par < upperBarrier):
+                knockoutFlag = True
+                break
+        dcfsample.append(0) if knockoutFlag else dcfsample.append(exp(-z) * payoff_mc(exp(-z)*par, strike))
+
+    sampleMean = statistics.mean(dcfsample)
+    stderr = (statistics.stdev(dcfsample)) / sqrt(nsample)
+    print('Sample mean: %f, stderr: %f, N samples: %d' %(sampleMean, stderr, len(dcfsample)))
+#
+    return sampleMean, stderr
+#
 
 def main():
     rzero, bondVol = loadData()
@@ -217,6 +335,9 @@ def main():
     timeInc=timeHorizon/n
     #
     marketBondPrices = gbd.genBondData(rzero,bondVol,timeInc,n+1)
+    print('Market bond prices:')
+    for i in range(len(marketBondPrices)):
+        print('Time: %f, Bond Price: %f, Volatility: %f' %(marketBondPrices[i][0], marketBondPrices[i][1], marketBondPrices[i][2]))
 
     treeRate=irTree.irTree(timeHorizon,n,treeType,marketBondPrices,prec)
     #
@@ -230,7 +351,6 @@ def main():
         print('') 
 
     optionMaturity, strike, uBondMaturity,uBondPar= T, K, tau, par
-    # paymentSchedule,uBondCoupon=[0.5,1.0,1.5,2.0,2.5,3.0,3.5,4.0],[1.5,1.5,1.5,1.5,1.5,1.5,1.5,1.5]
     paymentSchedule, uBondCoupon=[], []
     treeType, prec='lognormal', 1.e-8
     #
@@ -252,20 +372,28 @@ def main():
 
     #
     #----------------------------------------------------------------------------------
-    rand.seedinit(5678)
+    np.random.seed(42)
     #
-    a,b,rinit,sigma,timeMaturity,uBondTimeMaturity,par,strike,nstep,nsample=0.1,0.1,0.03,0.015,0.5,1.0,100,70,100,100
+    nstep, nsample= 12, 100000
+    n = nstep
+    dt = timeHorizon/n
+    m = int(nstep*(uBondMaturity-T)/T)
+    print(f"n: {n}, dt: {dt}, m: {m}")
+    marketBondPrices = gbd.genBondData(rzero,bondVol,dt,n + m + 1)
+    print('Market bond prices for MC:')
+    for i in range(len(marketBondPrices)):
+        print('Time: %f, Bond Price: %f, Volatility: %f' %(marketBondPrices[i][0], marketBondPrices[i][1], marketBondPrices[i][2]))
     #
-    optionprice,error = mcHoLeeZeroCouponBondCall(a,
-                                                b,
-                                                marketBondPrices,
-                                                rinit,
-                                                strike,
-                                                par,
-                                                timeMaturity,
-                                                uBondTimeMaturity,
-                                                nstep,
-                                                nsample)
+    optionprice, error = mcHoLeeZCBCall(marketBondPrices,
+                                        strike,
+                                        uBondPar,
+                                        H,
+                                        L,
+                                        optionMaturity,
+                                        uBondMaturity,
+                                        nstep,
+                                        nsample)
+
     print(optionprice, error)
     #
 
