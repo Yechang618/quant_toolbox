@@ -5,7 +5,7 @@ from math import exp,log,sqrt
 #-----------------------------------------------------------------
 def modelRate(a,b,j,treeType):
     if(treeType=='normal'):
-	    rate=a-b*j
+        rate=a-b*j
     elif(treeType=='lognormal'):
         rate=a*b**j
     return rate
