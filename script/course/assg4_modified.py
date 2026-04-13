@@ -178,7 +178,9 @@ def get_yield_path(r0, sigma, dt, n, m, marketBondPrices, rnd):
 
 def main():
     rzero, bondVol = loadData()
-    # T: maturity of option, K: K price, tau: maturity of underlying bond, par: par value of underlying bond, upperBarrier/lowerBarrier: knockout barriers
+    # T: maturity of option, K: K price, 
+    # tau: maturity of underlying bond, par: par value of underlying bond, 
+    # upperBarrier/lowerBarrier: knockout barriers
 
     T, K, tau, par, upperBarrier, lowerBarrier = 1, 0.95, 2, 1, 0.98, 0.90
     treeType, prec = 'normal', 1.e-8
