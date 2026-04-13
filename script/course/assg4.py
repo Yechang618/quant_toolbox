@@ -10,9 +10,8 @@
 ###################################
 
 import numpy as np
-import matplotlib.pyplot as plt
 import irTree, rand, statistics
-import cubicSpline as cs
+# import cubicSpline as cs
 import genBondData as gbd
 from math import exp, sqrt, log
 
@@ -86,6 +85,11 @@ def bondOptionTree(optionMaturity,
     for i in range(H-1,-1,-1):
         for j in range(0,i+1):
             fairValue=exp(-treeRate[i][j]*timeInc)*(1/2)*(fTree[i+1][j]+fTree[i+1][j+1])
+            # pricing_temp = max(fairValue,payoff_mc(Bf[i][j],strike))
+            # if lowerBarrier < pricing_temp < upperBarrier:
+            #     fTree[i].append(pricing_temp)
+            # else:
+            #     fTree[i].append(0.0)
             fTree[i].append(max(fairValue,payoff(Bf[i][j],strike, upperBarrier,lowerBarrier)))
 #
     return fTree
@@ -134,14 +138,14 @@ def mcHoLeeZCBCall(marketBondPrices,
         y=r*(dt/2)
         skipFlag=False
         rnd = np.random.normal(0, 1, nstep)
-        rList = [r0]
+        rList = []
         for i in range(nstep):
             t = i*dt
             dFdt, sigma = get_dFdt(marketBondPrices, i, dt)
             r += (dFdt + sigma * sigma * t) * dt + sigma * sqrt(dt) * rnd[i]
-            if(r<0): 
-                skipFlag=True             
-                break
+            # if(r<0): 
+            #     skipFlag=True             
+            #     break
             rList.append(r)
             if(i==nstep-1): y+=r*(dt/2)
             else: y+=r*dt
@@ -164,11 +168,12 @@ def mcHoLeeZCBCall(marketBondPrices,
                 # print(f"Discounted bond price at time step {i}: {P}, with rate {rList[i]}")
                 if not (lowerBarrier < P < upperBarrier):
                     # print(f"Simulated bond price {P} breached barrier at time step {i}, skipping payoff calculation.")
-                    dcfsample.append(0)
                     knockoutFlag=True
                     break
             if not knockoutFlag:
                 dcfsample.append(exp(-y)*payoff_mc(P,strike))
+            else:
+                dcfsample.append(0)
 #
 
     print(f"Simulated {len(dcfsample)} valid bond price paths out of {nsample} samples.")
@@ -203,9 +208,9 @@ def mcHoLeeZCBPrice(marketBondPrices,
             t = i*dt
             dFdt, sigma = get_dFdt(marketBondPrices, m0 + i, dt)
             r += (dFdt + sigma * sigma * t) * dt + sigma * sqrt(dt) * rnd[i]
-            if(r<0): 
-                skipFlag=True             
-                break
+            # if(r<0): 
+            #     skipFlag=True             
+            #     break
             if(i==m-1): y+=r*(dt/2)
             else: y+=r*dt
 #
@@ -224,13 +229,13 @@ def get_dFdt(marketBondPrices, i, dt):
         P1 = marketBondPrices[1][1]
         P2 = marketBondPrices[2][1]
         dFdt = log(P1**2/P0/P2)/dt/dt
-        sigma = marketBondPrices[1][2] / dt
+        # sigma = marketBondPrices[1][2] / dt
     else:
         Pt = marketBondPrices[i][1] 
         Pt1 = marketBondPrices[i+1][1]
         Pt_1 = marketBondPrices[i-1][1]
         dFdt = log(Pt**2/Pt1/Pt_1)/dt/dt
-        sigma = marketBondPrices[i][2] / dt
+        # sigma = marketBondPrices[i][2] / dt
     sigma = marketBondPrices[1][2] / dt
     return dFdt, sigma
 
@@ -239,7 +244,7 @@ def main():
     rzero, bondVol = loadData()
     T, K, tau, par, upperBarrier, lowerBarrier = 1, 0.95, 2, 1, 0.98, 0.90
 
-    timeHorizon, treeType, prec = T, 'lognormal', 1.e-8
+    timeHorizon, treeType, prec = T, 'normal', 1.e-8
     n = int(timeHorizon/rzero[0][0])
     m = int(n*(tau-T)/T)
     timeInc=timeHorizon/n
