@@ -107,7 +107,6 @@ def mcHoLeeZCBCall(marketBondPrices,
 
     for _ in range(nsample):
         r = r0
-        y1 = 0
         rnd = np.random.normal(0, 1, n + m)
         knockoutFlag = False
         y1, y2, rList = get_yield_path(r0, sigma, dt, n, m, marketBondPrices, rnd)
