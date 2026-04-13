@@ -119,7 +119,6 @@ def mcHoLeeZCBCall(marketBondPrices,
                 knockoutFlag = True
                 break
         if not knockoutFlag:
-            valid_paths += 1
             dcfsample.append(exp(-y1)*payoff(P_tau,K))
         else:
             dcfsample.append(0)
@@ -211,7 +210,6 @@ def main():
     np.random.seed(42)
     #
     nSamples = [100, 1000, 10000, 100000]
-    # marketBondPrices = gbd.genBondData(rzero,bondVol,dt,n + m + 1)
     #
     print('MC pricing with different sample sizes:')
     for nSample in nSamples:
@@ -225,8 +223,6 @@ def main():
                                             n,
                                             nSample)
         print(f"{nSample} samples, Option Price: {optionprice:.6f}, Standard Error: {error:.6f}")
-
-    #
 
     return 
 
