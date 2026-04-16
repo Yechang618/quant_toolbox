@@ -36,6 +36,14 @@ def bondOptionTree(optionMaturity, strike, uBondMaturity, uBondPar,
     
     marketBondPrices = gbd.genBondData(rzero, bondVol, timeInc, n + 1)
     treeRate = irTree.irTree(timeHorizon, n, treeType, marketBondPrices, prec)
+    print('Tree rate:')
+    for j in range(0,n+1):
+        for i in range(0,n+1):
+            if(i<j):
+                print('%6s '%(''),end=' ')
+            else:
+                print('%6.4f '%(treeRate[i][j]),end=' ')
+        print('') 
     
     H = int(optionMaturity / timeInc)
     Bf = [[] for _ in range(n + 2)]  
@@ -182,7 +190,7 @@ def get_theta(marketBondPrices, i, dt, sigma):
 def main():
     rzero, bondVol = loadData()
     T, K, tau, par, upperBarrier, lowerBarrier = 1.0, 0.95, 2.0, 1.0, 0.98, 0.90
-    timeHorizon, treeType, prec = T, 'lognormal', 1.e-8
+    timeHorizon, treeType, prec = T, 'normal', 1.e-8
     
     n = int(timeHorizon / rzero[0][0])
     timeInc = timeHorizon / n
