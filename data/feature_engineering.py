@@ -51,12 +51,12 @@ def extract_window_features(
             'spot_spread_ticks', 'spot_spread_mean', 'swap_spread_ticks', 'swap_spread_mean', 
             'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean',
             'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks',
-            'spot_volatility_ticks', 'swap_volatility_ticks', 'spot_price_return_60s', 'swap_price_return_60s',
-            'spot_trade_volume_60s', 'spot_trade_count_60s', 'spot_bid_price_mean', 'spot_ask_price_mean',
-            'swap_bid_price_mean', 'swap_ask_price_mean', 'swap_trade_volume_60s', 'swap_trade_count_60s',
+            'spot_volatility_ticks', 'swap_volatility_ticks', 'spot_price_return_2min', 'swap_price_return_2min',
+            'spot_trade_volume_2min', 'spot_trade_count_2min', 'spot_bid_price_mean', 'spot_ask_price_mean',
+            'swap_bid_price_mean', 'swap_ask_price_mean', 'swap_trade_volume_2min', 'swap_trade_count_2min',
             'spot_buy_trade_ratio', 'execute_delay_ms', 'threshold', 'basis_expected', 'basis_executed', 'basis_slippage_ticks',
             'spot_midprice_mean', 'spot_midprice_std', 'spread_ticks', 
-            'depth_imbalance_mean', 'volatility_ticks', 'trade_volume_60s',
+            'depth_imbalance_mean', 'volatility_ticks', 'trade_volume_2min',
             'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 'spot_midprice_low',
             'swap_midprice_mean', 'swap_midprice_std', 'swap_spread_mean', 
             'swap_depth_imbalance_mean', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 'swap_buy_trade_ratio',
@@ -98,19 +98,21 @@ def extract_window_features(
     swap_spread = swap_ask1 - swap_bid1
     basis_ask = np.log(swap_ask1) - np.log(spot_ask1)
     basis_bid = np.log(swap_bid1) - np.log(spot_bid1)
+    basis_mid = np.log(swap_midprice) - np.log(spot_midprice)
     ob_window['basis_ask'] = np.log(ob_window['swap_ask1_px']) - np.log(ob_window['spot_ask1_px'])
     ob_window['basis_bid'] = np.log(ob_window['swap_bid1_px']) - np.log(ob_window['spot_bid1_px'])
 
     if trade_record.get('operation') == 'open2':
-        basis_bid_upper = ob_window['basis_bid'].quantile(0.90)
-        # basis_ask_lower = ob_window['basis_ask'].quantile(0.00)
-        basis_bid_adjusted = ob_window['basis_bid'].loc[ob_window['basis_bid'] < basis_bid_upper]
-        basis_ask_adjusted = basis_ask.copy()
+        basis_mid_adjusted = basis_mid.quantile(0.90)
     else:
-        # For close operations, we want to avoid extreme negative basis that could be due to outliers or data issues
-        basis_ask_lower = ob_window['basis_ask'].quantile(0.10)
-        basis_bid_adjusted = basis_bid.copy()
-        basis_ask_adjusted = ob_window['basis_ask'].loc[ob_window['basis_ask'] > basis_ask_lower]
+        basis_mid_adjusted = basis_mid.quantile(0.10)
+
+    # Weighted basis adjustment based on operation type
+    weights = [-2, -1, -.5, -.1, -.05, -.01, 0, .01, .05, .1, .5, 1, 2]
+    for i, w in enumerate(weights):
+        weighted_basis_mid_adjusted = basis_mid_adjusted * np.exp(w * basis_mid_adjusted)
+        features[f'basis_mid_adjusted_mean_{i}'] = format_float(weighted_basis_mid_adjusted.mean())
+        features[f'basis_mid_adjusted_std_{i}'] = format_float(weighted_basis_mid_adjusted.std())
 
     features['spot_midprice_mean'] = format_float(spot_midprice.mean())
     features['spot_midprice_std'] = format_float(spot_midprice.std())
@@ -140,10 +142,13 @@ def extract_window_features(
     features['basis_bid_high'] = format_float(basis_bid.max())
     features['basis_ask_low'] = format_float(basis_ask.min())
     features['basis_bid_low'] = format_float(basis_bid.min())
-    features['basis_ask_adjusted_mean'] = format_float(basis_ask_adjusted.mean())
-    features['basis_bid_adjusted_mean'] = format_float(basis_bid_adjusted.mean())
-    features['basis_ask_adjusted_std'] = format_float(basis_ask_adjusted.std())
-    features['basis_bid_adjusted_std'] = format_float(basis_bid_adjusted.std())
+    # features['basis_ask_adjusted_mean'] = format_float(basis_ask_adjusted.mean())
+    # features['basis_bid_adjusted_mean'] = format_float(basis_bid_adjusted.mean())
+    # features['basis_ask_adjusted_std'] = format_float(basis_ask_adjusted.std())
+    # features['basis_bid_adjusted_std'] = format_float(basis_bid_adjusted.std())
+    features['basis_mid_adjusted_mean'] = format_float(basis_mid_adjusted.mean())
+    features['basis_mid_adjusted_std'] = format_float(basis_mid_adjusted.std())
+
 
     # === Liquidity Features ===
     spot_bid1_qty = ob_window['spot_bid1_qty']
@@ -191,15 +196,15 @@ def extract_window_features(
     # Price return over window
     if len(spot_midprice) >= 2:
         price_return = (spot_midprice.iloc[-1] - spot_midprice.iloc[0]) / (spot_midprice.iloc[0] + 1e-10)
-        features['spot_price_return_60s'] = format_float(price_return)
+        features['spot_price_return_2min'] = format_float(price_return)
     else:
-        features['spot_price_return_60s'] = np.nan
+        features['spot_price_return_2min'] = np.nan
     
     if len(swap_midprice) >= 2:
         swap_price_return = (swap_midprice.iloc[-1] - swap_midprice.iloc[0]) / (swap_midprice.iloc[0] + 1e-10)
-        features['swap_price_return_60s'] = format_float(swap_price_return)
+        features['swap_price_return_2min'] = format_float(swap_price_return)
     else:
-        features['swap_price_return_60s'] = np.nan
+        features['swap_price_return_2min'] = np.nan
 
     # # === Trade Flow Features ===
     if not tf_window.empty:
@@ -215,40 +220,40 @@ def extract_window_features(
         ask_qty_swap = tf_window.loc[tf_window['trade_type'] == 'swap', 'ask_qty'].fillna(0)
         ask_px_swap = tf_window.loc[tf_window['trade_type'] == 'swap', 'ask_px'].fillna(0)
         ask_px_qty_swap = ask_px_swap * ask_qty_swap
-        features['spot_trade_volume_60s'] = format_float((bid_qty_spot + ask_qty_spot).sum())
+        features['spot_trade_volume_2min'] = format_float((bid_qty_spot + ask_qty_spot).sum())
         features['spot_bid_price_mean'] = format_float(bid_px_qty_spot.sum() / (bid_qty_spot.sum() + 1e-10)) if bid_qty_spot.sum() > 0 else np.nan
         features['spot_ask_price_mean'] = format_float(ask_px_qty_spot.sum() / (ask_qty_spot.sum() + 1e-10)) if ask_qty_spot.sum() > 0 else np.nan
-        features['spot_trade_count_60s'] = len(tf_window.loc[tf_window['trade_type'] == 'spot'])
+        features['spot_trade_count_2min'] = len(tf_window.loc[tf_window['trade_type'] == 'spot'])
         features['spot_buy_trade_ratio'] = format_float(np.log(bid_px_qty_spot.sum() + 1e-10) - np.log(ask_px_qty_spot.sum() + 1e-10)) if ask_px_qty_spot.sum()*bid_px_qty_spot.sum() > 0 else np.nan
-        features['swap_trade_volume_60s'] = format_float((bid_qty_swap + ask_qty_swap).sum())
-        features['swap_trade_count_60s'] = len(tf_window.loc[tf_window['trade_type'] == 'swap'])
+        features['swap_trade_volume_2min'] = format_float((bid_qty_swap + ask_qty_swap).sum())
+        features['swap_trade_count_2min'] = len(tf_window.loc[tf_window['trade_type'] == 'swap'])
         features['swap_bid_price_mean'] = format_float(bid_px_qty_swap.sum() / (bid_qty_swap.sum() + 1e-10)) if bid_qty_swap.sum() > 0 else np.nan
         features['swap_ask_price_mean'] = format_float(ask_px_qty_swap.sum() / (ask_qty_swap.sum() + 1e-10)) if ask_qty_swap.sum() > 0 else np.nan
         features['swap_buy_trade_ratio'] = format_float(np.log(bid_px_qty_swap.sum() + 1e-10) - np.log(ask_px_qty_swap.sum() + 1e-10)) if bid_px_qty_swap.sum()*ask_px_qty_swap.sum() > 0 else np.nan
 
     # if not tf_window.empty:
-    #     features['spot_trade_volume_60s'] = format_float(tf_window['bid_qty'].fillna(0).sum())
-    #     features['spot_trade_count_60s'] = len(tf_window)
+    #     features['spot_trade_volume_2min'] = format_float(tf_window['bid_qty'].fillna(0).sum())
+    #     features['spot_trade_count_2min'] = len(tf_window)
         
     #     # Trade direction imbalance
     #     if 'trade_type' in tf_window.columns:
     #         buy_trades = (tf_window['trade_type'] == 'BUY').sum()
     #         features['spot_buy_trade_ratio'] = format_float(buy_trades / len(tf_window))
     # else:
-    #     features['spot_trade_volume_60s'] = 0
-    #     features['spot_trade_count_60s'] = 0
+    #     features['spot_trade_volume_2min'] = 0
+    #     features['spot_trade_count_2min'] = 0
     #     features['spot_buy_trade_ratio'] = np.nan
     
     # if not tf_window.empty and 'swap_qty' in tf_window.columns:
     #     print(f"tf_window columns: {tf_window.columns}")
-    #     features['swap_trade_volume_60s'] = format_float(tf_window['swap_qty'].fillna(0).sum())
-    #     features['swap_trade_count_60s'] = len(tf_window)
+    #     features['swap_trade_volume_2min'] = format_float(tf_window['swap_qty'].fillna(0).sum())
+    #     features['swap_trade_count_2min'] = len(tf_window)
     #     if 'trade_type' in tf_window.columns:
     #         buy_trades = (tf_window['trade_type'] == 'BUY').sum()
     #         features['swap_buy_trade_ratio'] = format_float(buy_trades / len(tf_window))
     # else:
-    #     features['swap_trade_volume_60s'] = 0
-    #     features['swap_trade_count_60s'] = 0
+    #     features['swap_trade_volume_2min'] = 0
+    #     features['swap_trade_count_2min'] = 0
     #     features['swap_buy_trade_ratio'] = np.nan
 
 

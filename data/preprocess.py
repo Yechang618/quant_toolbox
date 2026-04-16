@@ -67,8 +67,8 @@ def filter_valid_records(
     
     Args:
         df: Raw trade records DataFrame
-        date_start: Start date in 'YYYY-MM' format (e.g., '2026-01')
-        date_end: End date in 'YYYY-MM' format (e.g., '2026-01')
+        date_start: Start date in 'YYYY-MM-DD' format (e.g., '2026-01-01')
+        date_end: End date in 'YYYY-MM-DD' format (e.g., '2026-01-31')
     
     Returns:
         Filtered DataFrame
@@ -82,7 +82,8 @@ def filter_valid_records(
             logger.warning("date_parsed column not found, skipping date filter")
         else:
             # Create year-month column for filtering
-            df['year_month'] = df['date_parsed'].dt.strftime('%Y-%m')
+            # df['year_month'] = df['date_parsed'].dt.strftime('%Y-%m')
+            df['year_month'] = df['date_parsed'].dt.strftime('%Y-%m-%d')
             
             if date_start and date_end:
                 mask = (df['year_month'] >= date_start) & (df['year_month'] <= date_end)
@@ -349,15 +350,10 @@ def run_pipeline(
     symbols_completed = 0
     
     # === MODIFIED: Process and save per symbol ===
-    # processed_symbols = ['1MBABYDOGEUSDT', '1000CATUSDT', '1000CHEEMUSDT',
-    #                      'ACHUSDT', 'AIUSDT', 'AIXBTUSDT', 'BCHUSDT', 'CHZUSDT',
-    #                      'CUSDT', 'DEXEUSDT','DIAUSDT', 'DUSKUSDT', 'FORMUSDT', 'FXSUSDT',
-    #                      'GLMUSDT', 'GPSUSDT', 'HBARUSDT', 'HIVEUSDT', 'HUMAUSDT', 
-    #                      'JUPUSDT', 'MOVRUSDT', 'NEIROUSDT', 'OGUSDT', 'ORDIUSDT',
-    #                      'PHAUSDT', 'PROMUSDT', 'PROVEUSDT', 'QNTUSDT', 'SANTOSUSDT', 
-    #                      'SCRTUSDT', 'SYSUSDT', 'TSTUSDT', 'TWTUSDT', 'XVGUSDT', 
-    #                      'YFIUSDT', 'ZENUSDT']
-    processed_symbols = []
+    processed_symbols = ['0GUSDT', 'APTUSDT', 'AXLUSDT', 'DASHUSDT', 'DEXEUSDT', 'DUSDT',
+                         'DUSKUSDT', 'GPSUSDT', 'LINEAUSDT', 'PROMUSDT', 'RESOLVUSDT',
+                          'SCRUSDT', 'TRBUSDT', 'TWTUSDT', 'XLMUSDT', 'ZENUSDT']  # Example of symbols to skip if already processed
+    # processed_symbols = []
     for symbol_idx, symbol in enumerate(unique_symbols, 1):
         if symbol in processed_symbols:
             logger.info(f"Skipping already processed symbol: {symbol}")
