@@ -21,7 +21,7 @@ import seaborn as sns
 
 results = {}
 models = ['OLS Regression', # 'Linear Regression',  
-          'LightGBM Regressor', 'XGBoost Regressor', 
+          'LightGBM Regressor', #'XGBoost Regressor', 
           # 'Random Forest Regressor',  #'CNN Regressor', 
           ]
 
@@ -31,8 +31,8 @@ mode = 0
 # delay_exec = '_2'
 delay_exec = '_4'
 normalize_X = 0
-operation = 'open2'
-# operation = 'close2'
+# operation = 'open2'
+operation = 'close2'
 delay_precentile = 50
 beta = 1
 symbol = 'all'
@@ -232,47 +232,62 @@ weights = [-2, -1, -.5, -.1, -.05, -.01, 0, .01, .05, .1, .5, 1, 2]
 basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
 df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
 df['basis_adjusted_mid_to_thres'] = (df['basis_mid_adjusted_mean'] - df['threshold']) 
+selected_feeture_cols = []
 for i in range(13):
     df[f'basis_adj_mid_to_thres_{weights[i]}'] = (df[f'basis_mid_adjusted_mean_{i}'] - df['threshold']) 
     # feature_cols.append(f'basis_mid_adjusted_mean_{i}')
-    # feature_cols.append(f'basis_adj_mid_to_thres_{weights[i]}')
-feature_cols.append(f'basis_adj_mid_to_thres_{weights[4]}')
-# basis_close_mid = (df['basis_ask_close'] + df['basis_bid_close']) / 2
-# df['basis_close_to_thres'] = (basis_close_mid - df['threshold'])
-# df['basis_expected_to_thres'] = (df['basis_expected'] - df['threshold'])
-# df['basis_ask_close_to_thres'] = (df['basis_ask_close'] - df['threshold'])
-# df['basis_bid_close_to_thres'] = (df['basis_bid_close'] - df['threshold'])
-# df['basis_std_to_mean'] = (df['basis_ask_std'] + df['basis_bid_std']) / (basis_mid_mean + 1e-12)
-# df['spot_mid_std/abs(mean)'] = df['spot_midprice_std'] / (np.abs(df['spot_midprice_mean']) + 1e-12)
-# df['swap_mid_std/abs(mean)'] = df['swap_midprice_std'] / (np.abs(df['swap_midprice_mean']) + 1e-12)
-# df['basis_ask_adj_std/abs(mean)'] = df['basis_ask_adjusted_std'] / (np.abs(df['basis_ask_adjusted_mean']) + 1e-12)
-# df['basis_bid_adj_std/abs(mean)'] = df['basis_bid_adjusted_std'] / (np.abs(df['basis_bid_adjusted_mean']) + 1e-12)
-# df['trade_count_ratio'] = np.log(df['swap_trade_count_2min'] + 1) - np.log(df['spot_trade_count_2min'] + 1)
-# df['trade_volume_ratio'] = np.log(df['swap_trade_volume_2min'] + 1) - np.log(df['spot_trade_volume_2min'] + 1)
-# df['trade_count_total'] = df['swap_trade_count_2min'] + df['spot_trade_count_2min']
-# df['trade_volume_total'] = df['swap_trade_volume_2min'] + df['spot_trade_volume_2min']
-# df['sum_price_return_2min'] = df['spot_price_return_2min'] + df['swap_price_return_2min']
+    feature_cols.append(f'basis_adj_mid_to_thres_{weights[i]}')
+    selected_feeture_cols.append(f'basis_mid_adjusted_mean_{i}')
+
+# print(filtered_df['exec_ts_utc'])
+df['date'] = df['exec_ts_utc'].dt.date
+print(df[selected_feeture_cols].describe())
+# Compare daily values of IC and IR of basis_mid_adjusted_mean_{i} and basis_adj_mid_to_thres_{i}
+result_IC_IR = []
+import scipy.stats as stats
+# Assume 'df' has 'factor_score' and 'future_return'
+# Group by date to get daily cross-sectional correlation
+def calculate_ic(group, factor_name, return_name):
+    return stats.spearmanr(group[factor_name], group[return_name])[0]
+
+result_IC_IR = []
+for i in range(13):
+    factor_name = f'basis_mid_adjusted_mean_{i}'
+    label_name = 'gain_vs_threshold'
+    # Calculate IC series
+    daily_ic = df.groupby('date').apply(calculate_ic, factor_name=factor_name, return_name=label_name)
+
+    # Calculate IR
+    ic_mean = daily_ic.mean()
+    ic_std = daily_ic.std()
+    ir = ic_mean / ic_std
+    print(f"IC of {factor_name}: {ic_mean:.8f} (+/- {ic_std:.8f}). IR: {ir:.8f}")
+    result_IC_IR.append((ic_mean, ir))
+
+# Plot IC and IR
+plt.figure(figsize=(12, 10))
+ic_values_mid = [x[0] for x in result_IC_IR]
+ir_values_mid = [x[1] for x in result_IC_IR]
+plt.subplot(2, 2, 1)
+plt.plot(weights, ic_values_mid, 'o-', label='IC: basis_mid_adjusted_mean')
+# plt.plot(weights, ic_values_adj_mid, 's-', label='IC: basis_adj_mid_to_thres')
+plt.xlabel('Index')
+plt.ylabel('IC')
+plt.title('IC Values of Adjusted Basis Mids')
+plt.grid(True)
+plt.legend()
 
 
-# feature_cols.append('basis_expected_to_thres')
-# feature_cols.append('basis_ask_k_volatility')
-# feature_cols.append('basis_bid_k_volatility')
-# feature_cols.append('basis_close_to_thres')
-# feature_cols.append('basis_mid_to_thres')
-# feature_cols.append('basis_adjusted_mid_to_thres')
-# feature_cols.append('basis_ask_close_to_thres')
-# feature_cols.append('basis_bid_close_to_thres')
-# feature_cols.append('basis_std_to_mean')
-# feature_cols.append('spot_mid_std/abs(mean)')
-# feature_cols.append('swap_mid_std/abs(mean)')
-# feature_cols.append('basis_ask_adj_std/abs(mean)')
-# feature_cols.append('basis_bid_adj_std/abs(mean)')
-# feature_cols.append('trade_count_ratio')
-# feature_cols.append('trade_volume_ratio')
-# feature_cols.append('trade_count_total')
-# feature_cols.append('trade_volume_total')
-# feature_cols.append('sum_price_return_2min')
-
+plt.subplot(2, 2, 2)
+plt.plot(weights, ir_values_mid, 'o-', label='IR: basis_mid_adjusted_mean')
+# plt.plot(weights, ir_values_adj_mid, 's-', label='IR: basis_adj_mid_to_thres')
+plt.xlabel('Index')
+plt.ylabel('IR')
+plt.title('IR Values of Adjusted Basis Mids')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+# plt.show()
 
 df['const.'] = 1.0
 feature_cols.append('const.')
@@ -295,12 +310,22 @@ corr_matrix = df_corr.corr()
 # plt.show()
 
 # Plot mean of f"basis_mid_adjusted_mean_{i}" for i in range(13) against i
-plt.figure(figsize=(10, 6))
+plt.subplot(2, 2, 3)
 for i in range(13):
     plt.plot(weights[i], df[f'basis_mid_adjusted_mean_{i}'].mean(), 'bo')
 plt.xlabel('Index')
 plt.ylabel('Mean of basis_mid_adjusted_mean')
 plt.title('Mean Values of Adjusted Basis Mids')
+plt.grid(True)
+plt.subplot(2, 2, 4)
+for i in range(13):
+    plt.plot(weights[i], df[f'basis_mid_adjusted_mean_{i}'].std(), 'bo')
+plt.xlabel('Index')
+plt.ylabel('Standard Deviation of basis_mid_adjusted_mean')
+plt.title('Standard Deviation Values of Adjusted Basis Mids')
+plt.grid(True)
+plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}_{label_name}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+
 plt.show()
 
 
@@ -458,85 +483,6 @@ if 'XGBoost Regressor' in models:
     results['XGBoost Regressor']['indices'] = indices_xgb
     results['XGBoost Regressor']['label_pred'] = label_pred_xgb
 
-if 'CNN Regressor' in models:
-    results['CNN Regressor'] = {}
-    # ==================== Train a DEEPER CNN model ====================
-    # 更深的 CNN 结构 - 输入维度 (n_sample, n_feature)
-    # 内部转换为 (n_sample, n_feature, 1) 用于 Conv1D
-    n_features = X_train.shape[1]
-
-    model_cnn = keras.Sequential([
-        # Input layer - 输入形状 (n_features, 1)
-        layers.Input(shape=(n_features, 1)),
-        
-        # 第一组卷积块
-        layers.Conv1D(64, 3, activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.3),
-        
-        # 第二组卷积块
-        layers.Conv1D(128, 3, activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.3),
-        
-        # 第三组卷积块
-        layers.Conv1D(256, 3, activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.3),
-        
-        # 第四组卷积块
-        layers.Conv1D(128, 3, activation='relu', padding='same'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.3),
-        
-        # 全局池化
-        layers.GlobalAveragePooling1D(),
-        
-        # 全连接层
-        layers.Dense(64, activation='relu'),
-        layers.BatchNormalization(),
-        layers.Dropout(0.5),
-        
-        layers.Dense(32, activation='relu'),
-        layers.Dropout(0.3),
-        
-        # 输出层
-        layers.Dense(1)
-    ])
-
-    model_cnn.compile(optimizer='adam', loss='mse', metrics=['mae'])
-    model_cnn.summary()
-
-    # 训练模型 - 输入需要扩展为 3D (n_sample, n_features, 1)
-    history = model_cnn.fit(
-        X_train[..., np.newaxis], 
-        y_train, 
-        epochs=50, 
-        batch_size=256, 
-        validation_split=0.1,
-        callbacks=[
-            keras.callbacks.EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True),
-            keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.5, patience=5, min_lr=1e-6)
-        ]
-    )
-
-    # 预测
-    y_pred_cnn_norm = model_cnn.predict(X_test[..., np.newaxis]).flatten()
-    y_pred_cnn = y_pred_cnn_norm * y_train_std + y_train_mean  # Denormalize predictions
-
-    y_pred_cnn_train_norm = model_cnn.predict(X_train[..., np.newaxis]).flatten()
-    y_pred_cnn_train = y_pred_cnn_train_norm * y_train_std + y_train_mean  # Denormalize train predictions
-    label_pred_cnn = y_pred_cnn - beta * x_thres
-
-    mse_cnn = mean_squared_error(y_test, y_pred_cnn)
-    r2_cnn = r2_score(y_test, y_pred_cnn)
-    print(f"CNN - MSE: {mse_cnn:.4f}, R2: {r2_cnn:.4f}")
-    results['CNN Regressor']['MSE'] = mse_cnn
-    results['CNN Regressor']['R2'] = r2_cnn
-    results['CNN Regressor']['y_pred'] = y_pred_cnn
-    results['CNN Regressor']['y_pred_train'] = y_pred_cnn_train
-    results['CNN Regressor']['label_pred'] = label_pred_cnn
-
 if 'Random Forest Regressor' in models:
     results['Random Forest Regressor'] = {}
     # Train a Random Forest Regressor
@@ -582,43 +528,31 @@ plt.savefig(f'output/ft_imp_{symbol}_{label_name}_nMod{len(models)}_{label_name}
 
 plt.show()
 
-fig2, axes2 = plt.subplots(len(models), 2, figsize=(18, 16))
+# fig2, axes2 = plt.subplots(len(models), 2, figsize=(18, 16))
 
-# Denormalize y_train for plotting
-y_train_denorm = y_train * y_train_std + y_train_mean
+# # Denormalize y_train for plotting
+# y_train_denorm = y_train * y_train_std + y_train_mean
 
-for i, model_name in enumerate(models):
-    y_pred = results[model_name]['y_pred']
-    y_pred_train = results[model_name]['y_pred_train']
-    axes2[i,0].scatter(y_test, y_pred, alpha=0.5, label=model_name)
-    axes2[i,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
-    axes2[i,0].set_xlabel('True Values')
-    axes2[i,0].set_ylabel('Predicted Values')
-    axes2[i,0].set_title(f'{model_name}: True vs Pred (sym: {symbol}, {label_name})')
-    axes2[i,0].grid(True)
-    axes2[i,0].legend()
-    axes2[i,1].scatter(y_train_denorm, y_pred_train, alpha=0.5, label=f'{model_name} (Train)', color='orange')
-    axes2[i,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
-    axes2[i,1].set_xlabel('True Values (Train)')
-    axes2[i,1].set_ylabel('Predicted Values')
-    axes2[i,1].set_title(f'{model_name}: True vs Pred (Train) (sym: {symbol}, {label_name})')
-    axes2[i,1].grid(True)
-    axes2[i,1].legend()
-
-plt.tight_layout()
-plt.savefig(f'output/pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
-
-plt.show()
-
-# fig3, axes3 = plt.subplots(1, len(models), figsize=(18, 6))
 # for i, model_name in enumerate(models):
-#     label_pred = results[model_name]['label_pred']
-#     axes3[i].scatter(label_test, label_pred, alpha=0.5, label=model_name)
-#     axes3[i].set_xlabel('Threshold')
-#     axes3[i].set_ylabel('Predicted Label (Pred - beta * Threshold)')
-#     axes3[i].set_title(f'{model_name}: Predicted Label vs Threshold ({label_name})')
-#     axes3[i].grid(True)
-#     axes3[i].legend()
+#     y_pred = results[model_name]['y_pred']
+#     y_pred_train = results[model_name]['y_pred_train']
+#     axes2[i,0].scatter(y_test, y_pred, alpha=0.5, label=model_name)
+#     axes2[i,0].plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'k--', lw=2)
+#     axes2[i,0].set_xlabel('True Values')
+#     axes2[i,0].set_ylabel('Predicted Values')
+#     axes2[i,0].set_title(f'{model_name}: True vs Pred (sym: {symbol}, {label_name})')
+#     axes2[i,0].grid(True)
+#     axes2[i,0].legend()
+#     axes2[i,1].scatter(y_train_denorm, y_pred_train, alpha=0.5, label=f'{model_name} (Train)', color='orange')
+#     axes2[i,1].plot([y_train_denorm.min(), y_train_denorm.max()], [y_train_denorm.min(), y_train_denorm.max()], 'k--', lw=2)
+#     axes2[i,1].set_xlabel('True Values (Train)')
+#     axes2[i,1].set_ylabel('Predicted Values')
+#     axes2[i,1].set_title(f'{model_name}: True vs Pred (Train) (sym: {symbol}, {label_name})')
+#     axes2[i,1].grid(True)
+#     axes2[i,1].legend()
+
 # plt.tight_layout()
-# plt.savefig(f'output/label_pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+# plt.savefig(f'output/pred_{symbol}_{label_name}_nMod{len(models)}_nFts{X_train.shape[1]}{delay_exec}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+
 # plt.show()
+
