@@ -9,11 +9,11 @@ from sklearn.inspection import permutation_importance
 
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
-import tensorflow as tf
+# import tensorflow as tf
 # from tensorflow import keras
 # from tensorflow.keras import layers
-import xgboost as xgb
-import lightgbm as lgb
+# import xgboost as xgb
+# import lightgbm as lgb
 from sklearn.linear_model import LinearRegression
 from sklearn.ensemble import RandomForestRegressor
 import statsmodels.api as sm
@@ -231,6 +231,7 @@ weights = [-2, -1, -.5, -.1, -.05, -.01, 0, .01, .05, .1, .5, 1, 2]
 
 basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
 df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
+df['basis_mid_mean'] = basis_mid_mean
 df['basis_adjusted_mid_to_thres'] = (df['basis_mid_adjusted_mean'] - df['threshold']) 
 selected_feeture_cols = []
 for i in range(13):
@@ -250,9 +251,10 @@ import scipy.stats as stats
 def calculate_ic(group, factor_name, return_name):
     return stats.spearmanr(group[factor_name], group[return_name])[0]
 
+ic_ir_list = [f'basis_mid_adjusted_mean_{i}' for i in range(13)]
+ic_ir_list.append('basis_mid_mean')
 result_IC_IR = []
-for i in range(13):
-    factor_name = f'basis_mid_adjusted_mean_{i}'
+for factor_name in ic_ir_list:
     label_name = 'gain_vs_threshold'
     # Calculate IC series
     daily_ic = df.groupby('date').apply(calculate_ic, factor_name=factor_name, return_name=label_name)
@@ -269,7 +271,7 @@ plt.figure(figsize=(12, 10))
 ic_values_mid = [x[0] for x in result_IC_IR]
 ir_values_mid = [x[1] for x in result_IC_IR]
 plt.subplot(2, 2, 1)
-plt.plot(weights, ic_values_mid, 'o-', label='IC: basis_mid_adjusted_mean')
+plt.plot(weights, ic_values_mid[:13], 'o-', label='IC: basis_mid_adjusted_mean')
 # plt.plot(weights, ic_values_adj_mid, 's-', label='IC: basis_adj_mid_to_thres')
 plt.xlabel('Index')
 plt.ylabel('IC')
@@ -279,7 +281,7 @@ plt.legend()
 
 
 plt.subplot(2, 2, 2)
-plt.plot(weights, ir_values_mid, 'o-', label='IR: basis_mid_adjusted_mean')
+plt.plot(weights, ir_values_mid[:13], 'o-', label='IR: basis_mid_adjusted_mean')
 # plt.plot(weights, ir_values_adj_mid, 's-', label='IR: basis_adj_mid_to_thres')
 plt.xlabel('Index')
 plt.ylabel('IR')
