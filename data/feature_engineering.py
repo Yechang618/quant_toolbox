@@ -88,6 +88,8 @@ def extract_window_features(
     #   dtype='str')
 
     # === Price & Spread Features ===
+
+    # Order book
     spot_bid1 = ob_window['spot_bid1_px']
     spot_ask1 = ob_window['spot_ask1_px']
     swap_bid1 = ob_window['swap_bid1_px']
@@ -96,11 +98,17 @@ def extract_window_features(
     swap_midprice = (swap_bid1 + swap_ask1) / 2
     spot_spread = spot_ask1 - spot_bid1
     swap_spread = swap_ask1 - swap_bid1
+    
     basis_ask = np.log(swap_ask1) - np.log(spot_ask1)
     basis_bid = np.log(swap_bid1) - np.log(spot_bid1)
+    basis_ask_bid = np.log(swap_ask1) - np.log(spot_bid1)
+    basis_bid_ask = np.log(swap_bid1) - np.log(spot_ask1)
+
     basis_mid = np.log(swap_midprice) - np.log(spot_midprice)
-    ob_window['basis_ask'] = np.log(ob_window['swap_ask1_px']) - np.log(ob_window['spot_ask1_px'])
-    ob_window['basis_bid'] = np.log(ob_window['swap_bid1_px']) - np.log(ob_window['spot_bid1_px'])
+    ob_window['basis_ask'] = basis_ask
+    ob_window['basis_bid'] = basis_bid
+    ob_window['basis_ask_bid'] = basis_ask_bid
+    ob_window['basis_bid_ask'] = basis_bid_ask    
 
     if trade_record.get('operation') == 'open2':
         basis_mid_adjusted = basis_mid.quantile(0.90)
