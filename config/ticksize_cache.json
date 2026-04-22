@@ -1,9 +1,13 @@
 {
-  "timestamp": 1776845118.8992481,
+  "timestamp": 1776876543.9147565,
   "data": {
     "0GUSDT_spot": 0.001,
     "0GUSDT_swap": 0.0001,
     "TWTUSDT_spot": 0.0001,
-    "TWTUSDT_swap": 0.0001
+    "TWTUSDT_swap": 0.0001,
+    "DEXEUSDT_spot": 0.001,
+    "DEXEUSDT_swap": 0.001,
+    "PROMUSDT_spot": 0.001,
+    "PROMUSDT_swap": 0.001
   }
 }
