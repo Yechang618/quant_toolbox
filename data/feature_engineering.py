@@ -103,24 +103,64 @@ def extract_window_features(
     basis_bid = np.log(swap_bid1) - np.log(spot_bid1)
     basis_ask_bid = np.log(swap_ask1) - np.log(spot_bid1)
     basis_bid_ask = np.log(swap_bid1) - np.log(spot_ask1)
-
+    ob_window['basis_ask'] = basis_ask
+    ob_window['basis_bid'] = basis_bid
+    ob_window['basis_ask_bid'] = basis_ask_bid
+    ob_window['basis_bid_ask'] = basis_bid_ask
+    # a = ob_window[['basis_ask', 'basis_ask_bid']].values()
+    # print(f"basis_ask and basis_ask_bid shape: {a.shape}")
+    # print(a)
+    basis_ask_mix = np.concatenate([basis_ask.values.reshape(-1), basis_ask_bid.values.reshape(-1)])
+    # ob_window[['basis_ask', 'basis_ask_bid']].values().reshape(-1)
+    basis_bid_mix = np.concatenate([basis_bid.values.reshape(-1), basis_bid_ask.values.reshape(-1)])
+    # ob_window[['basis_bid', 'basis_bid_ask']].values().reshape(-1)
     basis_mid = np.log(swap_midprice) - np.log(spot_midprice)
     ob_window['basis_ask'] = basis_ask
     ob_window['basis_bid'] = basis_bid
     ob_window['basis_ask_bid'] = basis_ask_bid
     ob_window['basis_bid_ask'] = basis_bid_ask    
 
-    if trade_record.get('operation') == 'open2':
-        basis_mid_adjusted = basis_mid.quantile(0.90)
+    # if trade_record.get('mode') == 2:
+    #     if trade_record.get('operation') == 'open2':
+    #         upper_bound = np.percentile(basis_bid_mix, 90)
+    #         basis_capped =  basis_bid_mix.where(basis_bid_mix < upper_bound).dropna()
+    #     else:
+    #         lower_bound = np.percentile(basis_ask_mix, 10)
+    #         basis_capped = np.basis_ask_mix.where(basis_ask_mix > lower_bound).dropna()
+    # else:
+    #     if trade_record.get('operation') == 'open2':
+    #         upper_bound = np.percentile(basis_ask_mix, 90)
+    #         basis_capped =  basis_ask_mix.where(basis_ask_mix < upper_bound).dropna()
+    #     else:
+    #         lower_bound = np.percentile(basis_bid_mix, 10)
+    #         basis_capped = basis_bid_mix.where(basis_bid_mix > lower_bound).dropna()
+
+    # 1. 确定使用哪个序列 & 计算分位数
+    if trade_record.get('mode') == 2:
+        use_bid = trade_record.get('operation') == 'open2'
     else:
-        basis_mid_adjusted = basis_mid.quantile(0.10)
+        use_bid = trade_record.get('operation') != 'open2'
+
+    series = basis_bid_mix if use_bid else basis_ask_mix
+    percentile = 90 if use_bid else 10
+    bound = np.percentile(series, percentile)
+
+    # 2. 选择处理方式（二选一）
+
+    # 🅰️ 过滤模式（删除异常值，长度改变）
+    basis_capped = series[series < bound] if use_bid else series[series > bound]
 
     # Weighted basis adjustment based on operation type
-    weights = [-2, -1, -.5, -.1, -.05, -.01, 0, .01, .05, .1, .5, 1, 2]
+    weights = [-1e6, -1e5, -1e4, -1e3, -1e2, -10, -1, 0, 1, 10, 100, 1e3, 1e4, 1e5, 1e6]
     for i, w in enumerate(weights):
-        weighted_basis_mid_adjusted = basis_mid_adjusted * np.exp(w * basis_mid_adjusted)
-        features[f'basis_mid_adjusted_mean_{i}'] = format_float(weighted_basis_mid_adjusted.mean())
-        features[f'basis_mid_adjusted_std_{i}'] = format_float(weighted_basis_mid_adjusted.std())
+        wght = np.exp(w * basis_mid)/np.sum(np.exp(w * basis_mid))  # Normalize weights to keep scale
+        basis_mid_weighted = basis_mid * wght
+        if w != 0:
+            features[f'basis_mid_weighted_mean_{np.log10(w)}'] = format_float(basis_mid_weighted.mean())
+            features[f'basis_mid_weighted_std_{np.log10(w)}'] = format_float(basis_mid_weighted.std())
+        else:
+            features[f'basis_mid_weighted_mean_zero'] = format_float(basis_mid_weighted.mean())
+            features[f'basis_mid_weighted_std_zero'] = format_float(basis_mid_weighted.std())            
 
     features['spot_midprice_mean'] = format_float(spot_midprice.mean())
     features['spot_midprice_std'] = format_float(spot_midprice.std())
@@ -154,8 +194,8 @@ def extract_window_features(
     # features['basis_bid_adjusted_mean'] = format_float(basis_bid_adjusted.mean())
     # features['basis_ask_adjusted_std'] = format_float(basis_ask_adjusted.std())
     # features['basis_bid_adjusted_std'] = format_float(basis_bid_adjusted.std())
-    features['basis_mid_adjusted_mean'] = format_float(basis_mid_adjusted.mean())
-    features['basis_mid_adjusted_std'] = format_float(basis_mid_adjusted.std())
+    features['basis_mid_adjusted_mean'] = format_float(np.mean(basis_capped))
+    features['basis_mid_adjusted_std'] = format_float(np.std(basis_capped))
 
 
     # === Liquidity Features ===
