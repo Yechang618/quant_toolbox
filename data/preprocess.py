@@ -35,6 +35,7 @@ def load_trade_records(file_pattern: str) -> pd.DataFrame:
         DataFrame with normalized column names
     """
     files = list(Path(settings.bn_trade_root).glob(file_pattern))
+    print(f"Found {len(files)} trade record file(s) matching pattern: {file_pattern}")
     if not files:
         raise FileNotFoundError(f"No trade record files found matching: {file_pattern}")
     
