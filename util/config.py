@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     #     r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\bn_trade"
     # )
     market_processed_root: Path = Path(
-        r"dataset\market_processed"
+        r"./dataset/market_processed"
     )
     bn_trade_root: Path = Path(
-        r"dataset\bn_trade"
+        r"./dataset/bn_trade"
     )    
     # Output paths
     output_root: Path = dataset_root / "preprocessed"
