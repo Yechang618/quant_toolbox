@@ -22,8 +22,8 @@ import statsmodels.api as sm
 import seaborn as sns
 
 results = {}
-models = ['OLS Regression', # 'Linear Regression',  
-          'LightGBM Regressor', #'XGBoost Regressor', 
+models = ['OLS Regression', 'Linear Regression',  
+        #   'LightGBM Regressor', #'XGBoost Regressor', 
           # 'Random Forest Regressor',  #'CNN Regressor', 
           ]
 
