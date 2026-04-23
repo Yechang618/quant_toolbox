@@ -352,19 +352,19 @@ def extract_window_features(
             'swap_midprice_mean', 'swap_midprice_std', 'swap_spread_mean', 
             'swap_depth_imbalance_mean', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 'swap_buy_trade_ratio',
             # 兼容新增的加权特征占位
-            'basis_mid_weighted_mean_-6.0', 'basis_mid_weighted_std_-6.0',
-            'basis_mid_weighted_mean_-5.0', 'basis_mid_weighted_std_-5.0',
-            'basis_mid_weighted_mean_-4.0', 'basis_mid_weighted_std_-4.0',
-            'basis_mid_weighted_mean_-3.0', 'basis_mid_weighted_std_-3.0',
-            'basis_mid_weighted_mean_-2.0', 'basis_mid_weighted_std_-2.0',
-            'basis_mid_weighted_mean_-1.0', 'basis_mid_weighted_std_-1.0',
-            'basis_mid_weighted_mean_0.0', 'basis_mid_weighted_std_0.0',
-            'basis_mid_weighted_mean_1.0', 'basis_mid_weighted_std_1.0',
-            'basis_mid_weighted_mean_2.0', 'basis_mid_weighted_std_2.0',
-            'basis_mid_weighted_mean_3.0', 'basis_mid_weighted_std_3.0',
-            'basis_mid_weighted_mean_4.0', 'basis_mid_weighted_std_4.0',
-            'basis_mid_weighted_mean_5.0', 'basis_mid_weighted_std_5.0',
-            'basis_mid_weighted_mean_6.0', 'basis_mid_weighted_std_6.0',
+            'basis_mid_weighted_mean_-6', 'basis_mid_weighted_std_-6',
+            'basis_mid_weighted_mean_-5', 'basis_mid_weighted_std_-5',
+            'basis_mid_weighted_mean_-4', 'basis_mid_weighted_std_-4',
+            'basis_mid_weighted_mean_-3', 'basis_mid_weighted_std_-3',
+            'basis_mid_weighted_mean_-2', 'basis_mid_weighted_std_-2',
+            'basis_mid_weighted_mean_-1', 'basis_mid_weighted_std_-1',
+            'basis_mid_weighted_mean_0', 'basis_mid_weighted_std_0',
+            'basis_mid_weighted_mean_1', 'basis_mid_weighted_std_1',
+            'basis_mid_weighted_mean_2', 'basis_mid_weighted_std_2',
+            'basis_mid_weighted_mean_3', 'basis_mid_weighted_std_3',
+            'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4',
+            'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5',
+            'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6',
         ]
         return {k: np.nan for k in feature_list}
 
@@ -404,8 +404,9 @@ def extract_window_features(
     
     if len(basis_mid_clean) == 0:
         for w in weights:
-            sign = np.sign(w)
-            log10_w = np.log10(np.abs(w)) if w != 0 else 0
+            # sign = np.sign(w)
+            sign = '-' if w < 0 else ''
+            log10_w = int(np.log10(np.abs(w))) if w != 0 else 0
             key_suffix = f'{sign}{log10_w}' if w != 0 else 'zero'
             features[f'basis_mid_weighted_mean_{key_suffix}'] = np.nan
             features[f'basis_mid_weighted_std_{key_suffix}'] = np.nan
@@ -422,7 +423,8 @@ def extract_window_features(
             basis_mid_weighted = basis_mid_clean * wght
             
             if w != 0:
-                sign = np.sign(w)
+                # sign = np.sign(w)
+                sign = '-' if w < 0 else ''
                 log10_w = int(np.log10(np.abs(w)))
                 key_suffix = f'{sign}{log10_w}'
                 features[f'basis_mid_weighted_mean_{key_suffix}'] = format_float(np.mean(basis_mid_weighted))

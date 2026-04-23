@@ -7,6 +7,8 @@ import warnings
 from sklearn.metrics import mean_squared_error, r2_score
 from sklearn.inspection import permutation_importance
 
+import scipy.stats as stats
+
 warnings.filterwarnings('ignore', category=UserWarning, module='sklearn.utils.validation')
 
 # import tensorflow as tf
@@ -27,9 +29,7 @@ models = ['OLS Regression', # 'Linear Regression',
 
 TOLERENCE = 1e-12
 mode = 0
-# delay_exec = ''
-# delay_exec = '_2'
-delay_exec = '_4'
+delay_exec = '_5'
 normalize_X = 0
 # operation = 'open2'
 operation = 'close2'
@@ -39,14 +39,10 @@ symbol = 'all'
 # symbol = 'ZENUSDT'
 
 ######### label
-label_name = 'gain_vs_threshold' # basis_executed - threshold
-# label_name = 'basis_expected_to_thres'
-# label_name = 'basis_executed'
-# label_name = 'basis_slippage'
+label_name = 'gain_vs_threshold' 
 
 # Define the folder path
 folder_path = f'dataset/preprocessed{delay_exec}/mode{mode}/'
-# folder_path = 'dataset/preprocessed/mode2/'
 
 
 # Get all CSV files in the folder
@@ -64,41 +60,81 @@ selected_cols = ['gain_vs_threshold', 'basis_slippage', 'symbol', 'trade_mode', 
                  'exec_ts_utc', 'window_start_ms', 'window_end_ms', 'execute_delay_ms', 'timer_start_ts', 'taker_exec_ts', 
                  'threshold', 'basis_expected', 'basis_executed', 
                  'basis_ask_mean', 'basis_bid_mean', 'basis_ask_std', 'basis_bid_std', 
-                 'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 'basis_ask_high', 'basis_bid_high', 
-                 'basis_ask_low', 'basis_bid_low', 
-                #  'basis_ask_adjusted_mean', 'basis_bid_adjusted_mean', 'basis_ask_adjusted_std', 'basis_bid_adjusted_std', 
+                 'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
+                 'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 'basis_bid_low', 
+                 'basis_ask_adjusted_mean', 'basis_bid_adjusted_mean', 'basis_ask_adjusted_std', 'basis_bid_adjusted_std', 
                 #  'spot_spread_ticks', 'spot_spread_mean', 'swap_spread_ticks', 'swap_spread_mean', 
-                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
-                # 'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 
-                #  'swap_depth1_ask_ticks', 'spot_volatility_ticks', 'swap_volatility_ticks', 'spot_price_return_2min', 
-                #  'swap_price_return_2min', 'spot_trade_volume_2min', 'spot_trade_count_2min', 'spot_bid_price_mean', 
-                #  'spot_ask_price_mean', 'swap_bid_price_mean', 'swap_ask_price_mean', 'swap_trade_volume_2min', 
-                #  'swap_trade_count_2min',  'basis_slippage_ticks', 
-                #  'spot_midprice_mean', 'spot_midprice_std', 
-                #  'spread_ticks', 'depth_imbalance_mean', 'volatility_ticks', 
+                #  'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
+                #  'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 
+                #  'spot_volatility_ticks', 'swap_volatility_ticks', 
+                #  'spot_price_return_2min', 'swap_price_return_2min', 'spot_trade_volume_2min', 'spot_trade_count_2min', 
+                #  'spot_bid_price_mean', 'spot_ask_price_mean', 'swap_bid_price_mean', 'swap_ask_price_mean', 
+                #  'swap_trade_volume_2min', 'swap_trade_count_2min', 'spot_buy_trade_ratio', 'basis_slippage_ticks', 
+                #  'spot_midprice_mean', 'spot_midprice_std', 'spread_ticks', 'depth_imbalance_mean', 'volatility_ticks', 
                 #  'trade_volume_2min', 'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 
-                #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 
-                 'swap_buy_trade_ratio', 'spot_buy_trade_ratio',
-                 'basis_mid_adjusted_mean_0', 'basis_mid_adjusted_std_0', 
-                 'basis_mid_adjusted_mean_1', 'basis_mid_adjusted_std_1', 
-                 'basis_mid_adjusted_mean_2', 'basis_mid_adjusted_std_2', 
-                 'basis_mid_adjusted_mean_3', 'basis_mid_adjusted_std_3', 
-                 'basis_mid_adjusted_mean_4', 'basis_mid_adjusted_std_4', 
-                 'basis_mid_adjusted_mean_5', 'basis_mid_adjusted_std_5', 
-                 'basis_mid_adjusted_mean_6', 'basis_mid_adjusted_std_6', 
-                 'basis_mid_adjusted_mean_7', 'basis_mid_adjusted_std_7', 
-                 'basis_mid_adjusted_mean_8', 'basis_mid_adjusted_std_8', 
-                 'basis_mid_adjusted_mean_9', 'basis_mid_adjusted_std_9', 
-                 'basis_mid_adjusted_mean_10', 'basis_mid_adjusted_std_10', 
-                 'basis_mid_adjusted_mean_11', 'basis_mid_adjusted_std_11', 
-                 'basis_mid_adjusted_mean_12', 
-                 'basis_mid_adjusted_std_12', 
-                 'basis_mid_adjusted_mean', 
-                #  'basis_mid_adjusted_std'
-                 ]
+                #  'spot_midprice_low', 'swap_midprice_mean', 'swap_midprice_std', 'swap_buy_trade_ratio', 
+                #  'basis_mid_weighted_mean_-6.0', 'basis_mid_weighted_std_-6.0', 
+                #  'basis_mid_weighted_mean_-5.0', 'basis_mid_weighted_std_-5.0', 
+                #  'basis_mid_weighted_mean_-4.0', 'basis_mid_weighted_std_-4.0', 
+                #  'basis_mid_weighted_mean_-3.0', 'basis_mid_weighted_std_-3.0', 
+                #  'basis_mid_weighted_mean_-2.0', 'basis_mid_weighted_std_-2.0', 
+                #  'basis_mid_weighted_mean_-1.0', 'basis_mid_weighted_std_-1.0', 
+                #  'basis_mid_weighted_mean_0.0', 'basis_mid_weighted_std_0.0', 
+                #  'basis_mid_weighted_mean_1.0', 'basis_mid_weighted_std_1.0', 
+                #  'basis_mid_weighted_mean_2.0', 'basis_mid_weighted_std_2.0', 
+                #  'basis_mid_weighted_mean_3.0', 'basis_mid_weighted_std_3.0', 
+                #  'basis_mid_weighted_mean_4.0', 'basis_mid_weighted_std_4.0', 
+                #  'basis_mid_weighted_mean_5.0', 'basis_mid_weighted_std_5.0', 
+                #  'basis_mid_weighted_mean_6.0', 'basis_mid_weighted_std_6.0', 
+                 'basis_mid_weighted_mean_-1.06', 'basis_mid_weighted_std_-1.06', 
+                 'basis_mid_weighted_mean_-1.05', 'basis_mid_weighted_std_-1.05', 
+                 'basis_mid_weighted_mean_-1.04', 'basis_mid_weighted_std_-1.04', 
+                 'basis_mid_weighted_mean_-1.03', 'basis_mid_weighted_std_-1.03', 
+                 'basis_mid_weighted_mean_-1.02', 'basis_mid_weighted_std_-1.02', 
+                 'basis_mid_weighted_mean_-11', 'basis_mid_weighted_std_-11', 
+                 'basis_mid_weighted_mean_-10', 'basis_mid_weighted_std_-10', 
+                 'basis_mid_weighted_mean_zero', 'basis_mid_weighted_std_zero', 
+                 'basis_mid_weighted_mean_10', 'basis_mid_weighted_std_10', 
+                 'basis_mid_weighted_mean_11', 'basis_mid_weighted_std_11', 
+                 'basis_mid_weighted_mean_12', 'basis_mid_weighted_std_12', 
+                 'basis_mid_weighted_mean_1.03', 'basis_mid_weighted_std_1.03', 
+                 'basis_mid_weighted_mean_1.04', 'basis_mid_weighted_std_1.04', 
+                 'basis_mid_weighted_mean_1.05', 'basis_mid_weighted_std_1.05', 
+                 'basis_mid_weighted_mean_1.06', 'basis_mid_weighted_std_1.06', 
+                 'basis_mid_adjusted_mean', 'basis_mid_adjusted_std', 
+                 'basis_mid_weighted_mean_-1.06.0', 'basis_mid_weighted_std_-1.06.0', 
+                 'basis_mid_weighted_mean_-1.05.0', 'basis_mid_weighted_std_-1.05.0', 
+                 'basis_mid_weighted_mean_-1.04.0', 'basis_mid_weighted_std_-1.04.0', 
+                 'basis_mid_weighted_mean_-1.03.0', 'basis_mid_weighted_std_-1.03.0', 
+                 'basis_mid_weighted_mean_-1.02.0', 'basis_mid_weighted_std_-1.02.0', 
+                 'basis_mid_weighted_mean_-11.0', 'basis_mid_weighted_std_-11.0', 
+                 'basis_mid_weighted_mean_-10.0', 'basis_mid_weighted_std_-10.0', 
+                 'basis_mid_weighted_mean_10.0', 'basis_mid_weighted_std_10.0', 
+                 'basis_mid_weighted_mean_11.0', 'basis_mid_weighted_std_11.0', 
+                 'basis_mid_weighted_mean_12.0', 'basis_mid_weighted_std_12.0', 
+                 'basis_mid_weighted_mean_1.03.0', 'basis_mid_weighted_std_1.03.0', 
+                 'basis_mid_weighted_mean_1.04.0', 'basis_mid_weighted_std_1.04.0', 
+                 'basis_mid_weighted_mean_1.05.0', 'basis_mid_weighted_std_1.05.0', 
+                 'basis_mid_weighted_mean_1.06.0', 'basis_mid_weighted_std_1.06.0']
+
+weighted_feature_cols = [col for col in selected_cols if 'basis_mid_weighted_mean' in col]
+# Obtain weights from the column names
+weights = []
+for col in weighted_feature_cols:
+    weight_str = col.replace('basis_mid_weighted_mean_', '')
+    weights.append(weight_str)
+    # try:
+    #     weight = float(weight_str)
+    #     weights.append(weight)
+    # except ValueError:
+    #     print(f"Could not parse weight from column name: {col}")
+    #     weights.append(0)  # Default to 0 if parsing fails
+
+print(f"Extracted weights: {weights}")
+
 # Remove basis_mid_adjusted_std_{i} to avoid data leakage since they are calculated using future data
-for i in range(13):
-    selected_cols.remove(f'basis_mid_adjusted_std_{i}')
+# for i in range(13):
+#     selected_cols.remove(f'basis_mid_adjusted_std_{i}')
 
 # selected_cols = ['gain_vs_threshold', 'basis_slippage', 
 #                  'symbol', 'trade_mode', 'operation', 
@@ -174,8 +210,9 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 # Select only the relevant columns and drop rows with missing values
 # print(selected_cols)
 print(filtered_df[selected_cols].describe())
-df = filtered_df[selected_cols].dropna()
-print(f"Final dataset shape after filtering and dropping NA: {df.shape}")
+print(filtered_df[selected_cols].info())
+# df = filtered_df[selected_cols].dropna()
+# print(f"Final dataset shape after filtering and dropping NA: {df.shape}")
 feature_cols = [
                 # 'basis_mid_adjusted_mean', 
                 # 'basis_mid_adjusted_std',
@@ -196,106 +233,225 @@ feature_cols = [
                 'swap_buy_trade_ratio', 'spot_buy_trade_ratio',
                 ]
 
-weights = [-2, -1, -.5, -.1, -.05, -.01, 0, .01, .05, .1, .5, 1, 2]
-# feature_cols = ['threshold', 
-                # 'basis_expected', 
-                #  'spot_midprice_mean', 'spot_spread_mean', 
-                #  'spot_midprice_open', 'spot_midprice_close', 'spot_midprice_high', 'spot_midprice_low', 
-                #  'swap_midprice_mean', 'swap_spread_mean', 
-                #  'spot_midprice_std', 'swap_midprice_std', 
-                #  'swap_spread_ticks', 'spot_spread_ticks', 
-                #  'basis_ask_mean', 'basis_bid_mean', 
-                #  'basis_ask_std', 'basis_bid_std', 
-                #  'basis_ask_open', 'basis_bid_open', 'basis_ask_close', 'basis_bid_close', 
-                #  'basis_ask_high', 'basis_bid_high', 'basis_ask_low', 'basis_bid_low', 
-                #  'basis_ask_adjusted_mean', 'basis_bid_adjusted_mean', 
-                #  'basis_ask_adjusted_std', 'basis_bid_adjusted_std', 
-                #  'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
-                #  'spot_depth1_bid_ticks', 'spot_depth1_ask_ticks', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 
-                #  'spot_volatility_ticks', 'swap_volatility_ticks', 
-                #  'spot_price_return_2min', 'swap_price_return_2min', 
-                #  'spot_trade_volume_2min', 'swap_trade_volume_2min',
-                #  'spot_bid_price_mean', 'spot_ask_price_mean', 
-                #  'spot_trade_count_2min',  'swap_trade_count_2min', 
-                #  'swap_bid_price_mean', 'swap_ask_price_mean', 
-                #  'swap_buy_trade_ratio', 'spot_buy_trade_ratio', 
-                #  ]
 
+# # Calculate columns
+# # df['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df['basis_expected'] + 1e-12)
+# # df['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
+# # df['basis_bid_k_volatility'] = (df['basis_bid_high'] - df['basis_bid_low']) / (np.abs(df['basis_bid_close'] - df['basis_bid_open']) + 1e-12)
 
-# Calculate columns
-# df['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df['basis_expected'] + 1e-12)
-# df['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
-# df['basis_bid_k_volatility'] = (df['basis_bid_high'] - df['basis_bid_low']) / (np.abs(df['basis_bid_close'] - df['basis_bid_open']) + 1e-12)
+# # basis_mid_adjusted_mean = (df['basis_ask_adjusted_mean'] + df['basis_bid_adjusted_mean']) / 2
 
-# basis_mid_adjusted_mean = (df['basis_ask_adjusted_mean'] + df['basis_bid_adjusted_mean']) / 2
-
-basis_mid_mean = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
-df['basis_mid_to_thres'] = (basis_mid_mean - df['threshold']) 
-df['basis_mid_mean'] = basis_mid_mean
-df['basis_adjusted_mid_to_thres'] = (df['basis_mid_adjusted_mean'] - df['threshold']) 
+# df['basis_mid_mean']  = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
+# df['basis_mid_to_thres'] = (df['basis_mid_mean'] - df['threshold']) 
+# df['basis_adjusted_mid_to_thres'] = (df['basis_mid_adjusted_mean'] - df['threshold']) 
 selected_feeture_cols = []
-for i in range(13):
-    df[f'basis_adj_mid_to_thres_{weights[i]}'] = (df[f'basis_mid_adjusted_mean_{i}'] - df['threshold']) 
-    # feature_cols.append(f'basis_mid_adjusted_mean_{i}')
-    feature_cols.append(f'basis_adj_mid_to_thres_{weights[i]}')
-    selected_feeture_cols.append(f'basis_mid_adjusted_mean_{i}')
+# # ✅ 替换为：批量构建字典后一次性 concat（零碎片化）
+# new_cols_dict = {}
+# for w in weights:
+#     w_key = 'zero' if w == 0 else w
+#     src_col = f'basis_mid_weighted_mean_{w_key}'
+#     if src_col in df.columns:
+#         new_cols_dict[f'basis_weighted_mid_to_thres_{w_key}'] = df[src_col] - df['threshold']
+#         feature_cols.append(f'basis_weighted_mid_to_thres_{w_key}')
+#         selected_feeture_cols.append(src_col)
+#     else:
+#         print(f"⚠️ 跳过缺失列: {src_col}")
+
+# # 一次性追加所有新列，彻底消除 PerformanceWarning
+# if new_cols_dict:
+#     df = pd.concat([df, pd.DataFrame(new_cols_dict, index=df.index)], axis=1)
+
+# ✅ 替换原 dropna 逻辑：仅剔除核心标签/元数据为空的行，保留特征中的 NaN
+critical_cols = ['gain_vs_threshold', 'threshold', 'basis_expected', 'basis_executed', 'exec_ts_utc']
+# 安全过滤：只保留 selected_cols 中实际存在于 df 的列
+existing_cols = [c for c in selected_cols if c in filtered_df.columns]
+df = filtered_df[existing_cols].dropna(subset=critical_cols)
+
+if df.empty:
+    print("❌ 致命错误: 过滤后数据集为空！请检查 selected_cols 是否含拼写错误（如空格）或筛选条件过严。")
+    exit(1)
+print(f"Final dataset shape after filtering: {df.shape}")
+
+# ✅ 替换原逐列赋值逻辑：使用字典批量构建，彻底消除 PerformanceWarning
+new_cols_dict = {}
+
+# 基础衍生特征
+new_cols_dict['basis_slippage_rate'] = (df['basis_executed'] - df['basis_expected']) / (df['basis_expected'] + 1e-12)
+new_cols_dict['basis_ask_k_volatility'] = (df['basis_ask_high'] - df['basis_ask_low']) / (np.abs(df['basis_ask_close'] - df['basis_ask_open']) + 1e-12)
+new_cols_dict['basis_bid_k_volatility'] = (df['basis_bid_high'] - df['basis_bid_low']) / (np.abs(df['basis_bid_close'] - df['basis_bid_open']) + 1e-12)
+
+if 'basis_ask_mean' in df.columns and 'basis_bid_mean' in df.columns:
+    new_cols_dict['basis_mid_mean'] = (df['basis_ask_mean'] + df['basis_bid_mean']) / 2
+    new_cols_dict['basis_mid_to_thres'] = new_cols_dict['basis_mid_mean'] - df['threshold']
+
+if 'basis_ask_adjusted_mean' in df.columns and 'basis_bid_adjusted_mean' in df.columns:
+    new_cols_dict['basis_mid_adjusted_mean'] = (df['basis_ask_adjusted_mean'] + df['basis_bid_adjusted_mean']) / 2
+    new_cols_dict['basis_adjusted_mid_to_thres'] = new_cols_dict['basis_mid_adjusted_mean'] - df['threshold']
+
+# 安全提取加权特征（自动跳过不存在的列，防止 KeyError）
+valid_weights = []
+for w_str in weights:  # weights 当前为字符串列表，如 '-6.0', 'zero'
+    src_col = f'basis_mid_weighted_mean_{w_str}'
+    if src_col in df.columns:
+        new_cols_dict[f'basis_weighted_mid_to_thres_{w_str}'] = df[src_col] - df['threshold']
+        feature_cols.append(f'basis_weighted_mid_to_thres_{w_str}')
+        selected_feeture_cols.append(src_col)
+        valid_weights.append(w_str)
+    else:
+        print(f"⚠️ 跳过缺失列: {src_col}")
+
+# 更新 weights 仅保留有效列，保证后续 IC 计算与绘图严格对齐
+weights = valid_weights
+
+# 一次性追加所有新列到 DataFrame
+if new_cols_dict:
+    df = pd.concat([df, pd.DataFrame(new_cols_dict, index=df.index)], axis=1)
 
 # print(filtered_df['exec_ts_utc'])
-df['date'] = df['exec_ts_utc'].dt.date
-print(df[selected_feeture_cols].describe())
-# Compare daily values of IC and IR of basis_mid_adjusted_mean_{i} and basis_adj_mid_to_thres_{i}
-result_IC_IR = []
-import scipy.stats as stats
-# Assume 'df' has 'factor_score' and 'future_return'
-# Group by date to get daily cross-sectional correlation
-def calculate_ic(group, factor_name, return_name):
-    return stats.spearmanr(group[factor_name], group[return_name])[0]
+# df['date'] = df['exec_ts_utc'].dt.date
+# ✅ 替换原日期创建
+# 🛡️ 1. 消除 PerformanceWarning：在重操作前强制内存重排（defragment）
+df = df.copy()
 
-ic_ir_list = [f'basis_mid_adjusted_mean_{i}' for i in range(13)]
-ic_ir_list.append('basis_mid_mean')
+# 2. 创建日期列（使用 floor 保持 datetime64 类型）
+df['date'] = df['exec_ts_utc'].dt.floor('D')
+
+# 3. 定义要计算 IC/IR 的因子列表
+ic_ir_list = [f'basis_weighted_mid_to_thres_{w}' for w in weights]
+# 如果还需要计算原始 mid 因子的 IC，可取消下一行注释
+# ic_ir_list.append('basis_mid_mean')
+
 result_IC_IR = []
 for factor_name in ic_ir_list:
-    label_name = 'gain_vs_threshold'
-    # Calculate IC series
-    daily_ic = df.groupby('date').apply(calculate_ic, factor_name=factor_name, return_name=label_name)
+    if factor_name not in df.columns:
+        print(f"⚠️ 跳过缺失因子: {factor_name}")
+        continue
 
-    # Calculate IR
+    def calc_daily_ic(group):
+        # 🛡️ 核心修复：基于共同非空索引对齐因子与标签，确保 len(x) == len(y)
+        valid_idx = group[[factor_name, label_name]].dropna().index
+        if len(valid_idx) < 3:  # 样本过少时 spearmanr 无统计意义
+            return np.nan
+        x = group.loc[valid_idx, factor_name]
+        y = group.loc[valid_idx, label_name]
+        return stats.spearmanr(x, y)[0]
+
+    # 计算每日 IC
+    daily_ic = df.groupby('date').apply(calc_daily_ic)
+    daily_ic = pd.to_numeric(daily_ic, errors='coerce')  # 强制转 float 防 object 类型报错
+
     ic_mean = daily_ic.mean()
     ic_std = daily_ic.std()
-    ir = ic_mean / ic_std
-    print(f"IC of {factor_name}: {ic_mean:.8f} (+/- {ic_std:.8f}). IR: {ir:.8f}")
+    ir = ic_mean / ic_std if pd.notna(ic_std) and ic_std > 0 else np.nan
+
+    print(f"✅ IC of {factor_name}: {ic_mean:.8f} (±{ic_std:.8f}) | IR: {ir:.8f}")
     result_IC_IR.append((ic_mean, ir))
 
 # Plot IC and IR
-plt.figure(figsize=(12, 10))
-ic_values_mid = [x[0] for x in result_IC_IR]
-ir_values_mid = [x[1] for x in result_IC_IR]
-plt.subplot(2, 2, 1)
-plt.plot(weights, ic_values_mid[:13], 'o-', label='IC: basis_mid_adjusted_mean')
-# plt.plot(weights, ic_values_adj_mid, 's-', label='IC: basis_adj_mid_to_thres')
-plt.xlabel('Index')
-plt.ylabel('IC')
-plt.title('IC Values of Adjusted Basis Mids')
-plt.grid(True)
-plt.legend()
+# plt.figure(figsize=(12, 10))
+# ic_values_mid = [x[0] for x in result_IC_IR]
+# ir_values_mid = [x[1] for x in result_IC_IR]
+# plt.subplot(2, 2, 1)
+# plt.plot(weights, ic_values_mid[:13], 'o-', label='IC: basis_mid_adjusted_mean')
+# # plt.plot(weights, ic_values_adj_mid, 's-', label='IC: basis_adj_mid_to_thres')
+# plt.xlabel('Index')
+# plt.ylabel('IC')
+# plt.title('IC Values of Adjusted Basis Mids')
+# plt.grid(True)
+# plt.legend()
 
+
+# plt.subplot(2, 2, 2)
+# plt.plot(weights, ir_values_mid[:13], 'o-', label='IR: basis_mid_adjusted_mean')
+# # plt.plot(weights, ir_values_adj_mid, 's-', label='IR: basis_adj_mid_to_thres')
+# plt.xlabel('Index')
+# plt.ylabel('IR')
+# plt.title('IR Values of Adjusted Basis Mids')
+# plt.grid(True)
+# plt.legend()
+# plt.tight_layout()
+# # plt.show()
+
+# === 原代码（约第 320-330 行）===
+# plt.plot(weights, ir_values_adj_mid, 's-', label='IR: basis_adj_mid_to_thres')
+
+# ✅ 替换为：安全提取数据并修复未定义变量
+# ✅ 替换原绘图代码：安全提取有效数据，并将字符串权重转为浮点数用于坐标轴
+# ✅ 新增：健壮的权重字符串解析函数
+# ✅ 替换原 parse_weight_str 函数
+def parse_weight_str(w_str):
+    if w_str == 'zero':
+        return 0.0
+    # 1. 优先尝试直接转 float（兼容 '-1.0', '-6.0', '10', '0.0' 等）
+    # try:
+    #     return float(w_str)
+    # except ValueError:
+    #     pass
+    # 2. 解析复合格式（如 '-1.06.0' -> -1e6, '1.05.0' -> 1e5）
+    if w_str.startswith('-1.0'):
+        suffix = w_str[4:]
+        print(f"Parsing weight string: {w_str}, extracted suffix: '{suffix}'")
+        return -(10 ** float(suffix)) if suffix else -1.0
+    if w_str.startswith('-1'):
+        suffix = w_str[2:]
+        print(f"Parsing weight string: {w_str}, extracted suffix: '{suffix}'")
+        return -(10 ** float(suffix)) if suffix else -1.0
+    if w_str.startswith('1.0'):
+        suffix = w_str[3:]
+        print(f"Parsing weight string: {w_str}, extracted suffix: '{suffix}'")
+        return (10 ** float(suffix)) if suffix else 1.0
+    if w_str.startswith('1'):
+        suffix = w_str[1:]
+        print(f"Parsing weight string: {w_str}, extracted suffix: '{suffix}'")
+        return (10 ** float(suffix)) if suffix else 1.0
+    
+    print(f"⚠️ 无法解析权重字符串: {w_str}，默认返回 0")
+    return 0.0
+
+# ✅ 替换后续绘图坐标解析部分
+plot_weights = [parse_weight_str(w) for w in weights]
+print(f"Parsed plot weights: {plot_weights}, length: {len(plot_weights)}")
+N_plot = len(plot_weights)
+half_N = N_plot
+
+# 严格过滤 NaN 保证 x/y 长度一致
+valid_mask = [pd.notna(x[0]) for x in result_IC_IR]
+valid_weights = [w for w, v in zip(plot_weights, valid_mask) if v]
+ic_values = [x[0] for x in result_IC_IR if pd.notna(x[0])]
+ir_values = [x[1] for x in result_IC_IR if pd.notna(x[1])]
+
+plt.figure(figsize=(12, 10))
+plt.subplot(2, 2, 1)
+if len(valid_weights) > 0:
+    plt.plot(valid_weights[:half_N], ic_values[:half_N], 'o-', label='IC: Weighted Basis Mid')
+    plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IC 值
+plt.xlabel('Weight (log scale)')
+plt.ylabel('IC')
+plt.title('Daily Cross-Sectional IC')
+plt.grid(True); plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(weights, ir_values_mid[:13], 'o-', label='IR: basis_mid_adjusted_mean')
-# plt.plot(weights, ir_values_adj_mid, 's-', label='IR: basis_adj_mid_to_thres')
-plt.xlabel('Index')
+if len(valid_weights) > 0:
+    plt.plot(valid_weights[:half_N], ir_values[:half_N], 's-', label='IR: Weighted Basis Mid', color='orange')
+    plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IR 值
+plt.xlabel('Weight (log scale)')
 plt.ylabel('IR')
-plt.title('IR Values of Adjusted Basis Mids')
-plt.grid(True)
-plt.legend()
+plt.title('Information Ratio (IR)')
+plt.grid(True); plt.legend()
+
 plt.tight_layout()
+os.makedirs('output', exist_ok=True)
+plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.show()
+
+# plt.tight_layout()
+# output_dir = 'output'
+# os.makedirs(output_dir, exist_ok=True)
+# plt.savefig(f'{output_dir}/ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 # plt.show()
 
 df['const.'] = 1.0
 feature_cols.append('const.')
-
-# df['basis_executed_to_thres'] = (df['basis_executed'] - df['threshold'])
-# feature_cols.append('basis_executed_to_thres')
 
 print(f"Selected {len(feature_cols)} features")
 
@@ -329,6 +485,7 @@ plt.grid(True)
 plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}_{label_name}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 
 plt.show()
+
 
 
 # Prepare data for modeling

@@ -350,9 +350,11 @@ def run_pipeline(
     symbols_completed = 0
     
     # === MODIFIED: Process and save per symbol ===
-    # processed_symbols = ['0GUSDT', 'APTUSDT', 'AXLUSDT', 'DASHUSDT', 'DEXEUSDT', 'DUSDT',
-    #                      'DUSKUSDT', 'GPSUSDT', 'LINEAUSDT', 'PROMUSDT', 'RESOLVUSDT',
-    #                       'SCRUSDT', 'TRBUSDT', 'TWTUSDT', 'XLMUSDT', 'ZENUSDT']  # Example of symbols to skip if already processed
+    # processed_symbols = ['0GUSDT', 'APTUSDT', 'AXLUSDT', 'BCHUSDT', 'CAKEUSDT',
+    #                      'DASHUSDT', 'DEXEUSDT', 'DUSDT', 'DUSKUSDT', 'GLMUSDT',
+    #                      'GPSUSDT', 'HIVEUSDT', 'LINEAUSDT', 'PROMUSDT', 'RESOLVUSDT',
+    #                       'SCRUSDT', 'TAOUSDT', 'TRBUSDT','TURBOUSDT', 
+    #                       'TWTUSDT', 'XLMUSDT', 'ZENUSDT']  # Example of symbols to skip if already processed
     processed_symbols = []
     for symbol_idx, symbol in enumerate(unique_symbols, 1):
         if symbol in processed_symbols:

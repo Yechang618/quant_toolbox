@@ -12,13 +12,18 @@ class Settings(BaseSettings):
     project_root: Path = Path(__file__).parent.parent
     data_root: Path = project_root / "data"
     dataset_root: Path = project_root / "dataset"
+    # market_processed_root: Path = Path(
+    #     r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\market_processed"
+    # )
+    # bn_trade_root: Path = Path(
+    #     r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\bn_trade"
+    # )
     market_processed_root: Path = Path(
-        r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\market_processed"
+        r"dataset\market_processed"
     )
     bn_trade_root: Path = Path(
-        r"C:\Users\yecha\workspace\kronos_test\Kronos\dataset\bn_trade"
-    )
-    
+        r"dataset\bn_trade"
+    )    
     # Output paths
     output_root: Path = dataset_root / "preprocessed"
     output_mode0: Path = output_root / "mode0"
