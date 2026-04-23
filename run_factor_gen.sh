@@ -35,7 +35,8 @@ echo "📄 日志输出路径: $LOG_FILE"
 echo "🔧 附加参数: ${EXTRA_ARGS:-无}"
 
 # 使用 nohup 后台运行，合并标准输出与错误输出
-nohup $PYTHON run_factor_gen.py $EXTRA_ARGS > "$LOG_FILE" 2>&1 &
+# nohup $PYTHON run_factor_gen.py $EXTRA_ARGS > "$LOG_FILE" 2>&1 &
+nohup $PYTHON ./script/run_factor_gen.py $EXTRA_ARGS > "$LOG_FILE" 2>&1 &
 
 # 记录进程 PID 便于后续管理
 echo $! > run_factor_gen.pid
