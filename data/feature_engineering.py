@@ -423,7 +423,7 @@ def extract_window_features(
             
             if w != 0:
                 sign = np.sign(w)
-                log10_w = np.log10(np.abs(w))
+                log10_w = int(np.log10(np.abs(w)))
                 key_suffix = f'{sign}{log10_w}'
                 features[f'basis_mid_weighted_mean_{key_suffix}'] = format_float(np.mean(basis_mid_weighted))
                 features[f'basis_mid_weighted_std_{key_suffix}'] = format_float(np.std(basis_mid_weighted) if len(basis_mid_weighted) > 1 else np.nan)
