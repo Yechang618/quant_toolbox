@@ -365,6 +365,9 @@ def extract_window_features(
             'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4',
             'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5',
             'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6',
+            'basis_mid_adjusted_mean', 'basis_mid_adjusted_std',
+            'basis_mid_capped_mean', 'basis_mid_capped_std',
+            'n_basis_bid_mix', 'n_basis_ask_mix', 'n_basis_capped',
         ]
         return {k: np.nan for k in feature_list}
 
@@ -484,12 +487,19 @@ def extract_window_features(
     bound = np.percentile(series, percentile)
     basis_capped = series[series < bound] if use_bid else series[series > bound]
 
+    features['n_basis_bid_mix'] = len(basis_bid_mix)
+    features['n_basis_ask_mix'] = len(basis_ask_mix)
+    features['n_basis_capped'] = len(basis_capped)
     if len(basis_capped) == 0:
-        features['basis_mid_adjusted_mean'] = np.nan
-        features['basis_mid_adjusted_std'] = np.nan
+        features['basis_mid_adjusted_mean'] = format_float(np.mean(series))
+        features['basis_mid_adjusted_std'] = format_float(np.std(series, ddof=1) if len(series) > 1 else np.nan)
+        features['basis_mid_capped_mean'] = np.nan
+        features['basis_mid_capped_std'] = np.nan
     else:
         features['basis_mid_adjusted_mean'] = format_float(np.mean(basis_capped))
         features['basis_mid_adjusted_std'] = format_float(np.std(basis_capped, ddof=1) if len(basis_capped) > 1 else np.nan)
+        features['basis_mid_capped_mean'] = format_float(np.mean(basis_capped))
+        features['basis_mid_capped_std'] = format_float(np.std(basis_capped, ddof=1) if len(basis_capped) > 1 else np.nan)
 
     # === Liquidity Features ===
     spot_bid1_qty = ob_window['spot_bid1_qty']
