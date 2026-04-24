@@ -397,8 +397,12 @@ def extract_window_features(
     basis_ask_bid = np.log(swap_ask1) - np.log(spot_bid1)
     basis_bid_ask = np.log(swap_bid1) - np.log(spot_ask1)
 
-    basis_ask_mix = np.concatenate([basis_ask.values.reshape(-1), basis_ask_bid.values.reshape(-1)])
-    basis_bid_mix = np.concatenate([basis_bid.values.reshape(-1), basis_bid_ask.values.reshape(-1)])
+    # Mode 0, operation open2 => basis_ask_mix = (basis_ask, basis_bid_ask)
+    # Mode 0, operation close => basis_ask_mix = (basis_bid, basis_ask_bid)
+    # Mode 2, operation open2 => basis_ask_mix = (basis_bid, basis_bid_ask)
+    # Mode 2, operation close => basis_ask_mix = (basis_ask, basis_ask_bid)
+    basis_ask_mix = np.concatenate([basis_ask.values.reshape(-1), basis_bid_ask.values.reshape(-1)])
+    basis_bid_mix = np.concatenate([basis_bid.values.reshape(-1), basis_ask_bid.values.reshape(-1)])
     basis_mid = np.log(swap_midprice) - np.log(spot_midprice)
 
     # === Weighted basis adjustment (Softmax) ===
@@ -477,6 +481,8 @@ def extract_window_features(
     features['basis_bid_low'] = format_float(basis_bid.min())
 
     # === Basis Capped Logic ===
+    # Mode 2, operation close => basis_ask_mix = (basis_ask, basis_bid_ask) 去掉末尾的10%
+
     if trade_record.get('mode') == 2:
         use_bid = trade_record.get('operation') == 'open2'
     else:

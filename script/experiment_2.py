@@ -28,7 +28,7 @@ models = ['OLS Regression', 'Linear Regression',
           ]
 
 TOLERENCE = 1e-12
-mode = 2
+mode = 0
 delay_exec = '_7'
 normalize_X = 0
 # operation = 'open2'
