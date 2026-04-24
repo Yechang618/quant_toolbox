@@ -29,10 +29,10 @@ models = ['OLS Regression', 'Linear Regression',
 
 TOLERENCE = 1e-12
 mode = 2
-delay_exec = '_6'
+delay_exec = '_7'
 normalize_X = 0
-operation = 'open2'
-# operation = 'close2'
+# operation = 'open2'
+operation = 'close2'
 delay_precentile = 80
 beta = 1
 symbol = 'all'
@@ -81,7 +81,9 @@ selected_cols = ['gain_vs_threshold', 'basis_slippage', 'symbol', 'trade_mode',
                  'basis_mid_weighted_mean_2', 'basis_mid_weighted_std_2', 'basis_mid_weighted_mean_3', 'basis_mid_weighted_std_3', 
                  'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4', 'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5', 
                  'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6', 'basis_mid_weighted_mean_-0', 'basis_mid_weighted_std_-0', 
-                 'basis_mid_weighted_mean_zero', 'basis_mid_weighted_std_zero', 'basis_mid_adjusted_mean', 'basis_mid_adjusted_std'
+                 'basis_mid_weighted_mean_zero', 'basis_mid_weighted_std_zero', 'basis_mid_adjusted_mean', 'basis_mid_adjusted_std',
+                  'n_basis_bid_mix', 'n_basis_ask_mix', 'n_basis_capped', 
+                  'basis_mid_capped_mean', 'basis_mid_capped_std',
                  ]
 
 weighted_feature_cols = [col for col in selected_cols if 'basis_mid_weighted_mean' in col]
@@ -152,7 +154,7 @@ combined_df = combined_df.sort_values('exec_ts_utc')
 
 # operation_select = 'open2'
 # operation_select = 'close2'
-delay_quantile = 94 # Filter out rows with execute_delay_ms above the 50th percentile (median) to focus on more typical cases. Adjust as needed (e.g., 80 for 80th percentile).
+delay_quantile = 50 # Filter out rows with execute_delay_ms above the 50th percentile (median) to focus on more typical cases. Adjust as needed (e.g., 80 for 80th percentile).
 # Filter out outliers based on the 95th percentile of execute_delay_ms
 upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_quantile/100)
 print(f"{delay_quantile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
@@ -172,13 +174,16 @@ print(f"Operation: {operation}, Remaining rows after filtering: {len(filtered_df
 # print(selected_cols)
 print(filtered_df[selected_cols].describe())
 print(filtered_df[selected_cols].info())
+print(f"n_basis_bid_mix: {filtered_df['n_basis_bid_mix'].describe()}")
+print(f"n_basis_ask_mix: {filtered_df['n_basis_ask_mix'].describe()}")
 # df = filtered_df[selected_cols].dropna()
 # print(f"Final dataset shape after filtering and dropping NA: {df.shape}")
 feature_cols = [
-                'basis_mid_adjusted_mean', 
-                'basis_mid_adjusted_std',
+                # 'basis_mid_adjusted_mean', 
+                # 'basis_mid_adjusted_std',
+                # 'basis_mid_capped_mean', 'basis_mid_capped_std',
                 'spot_depth_imbalance_mean', 'swap_depth_imbalance_mean', 'spot_depth5_imbalance_mean', 'swap_depth5_imbalance_mean', 
-                # 'swap_buy_trade_ratio', 'spot_buy_trade_ratio',
+                'swap_buy_trade_ratio', 'spot_buy_trade_ratio',
                 ]
 
 
@@ -251,7 +256,8 @@ df = df.copy()
 df['date'] = df['exec_ts_utc'].dt.floor('D')
 
 # 3. 定义要计算 IC/IR 的因子列表
-ic_ir_list = [f'basis_weighted_mid_to_thres_{w}' for w in weights]
+# ic_ir_list = [f'basis_weighted_mid_to_thres_{w}' for w in weights]
+ic_ir_list = feature_cols
 # 如果还需要计算原始 mid 因子的 IC，可取消下一行注释
 # ic_ir_list.append('basis_mid_mean')
 
@@ -363,29 +369,55 @@ valid_weights = [w for w, v in zip(plot_weights, valid_mask) if v]
 ic_values = [x[0] for x in result_IC_IR if pd.notna(x[0])]
 ir_values = [x[1] for x in result_IC_IR if pd.notna(x[1])]
 
-plt.figure(figsize=(12, 10))
-plt.subplot(2, 2, 1)
-if len(valid_weights) > 0:
-    plt.scatter(valid_weights[:half_N], ic_values[:half_N],  label='IC: Weighted Basis Mid')
-    plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IC 值
-plt.xlabel('Weight (log scale)')
-plt.ylabel('IC')
-plt.title('Daily Cross-Sectional IC')
-plt.grid(True); plt.legend()
+fig, axes = plt.subplots(1, 4, figsize=(24, 6))
+# plt.figure(figsize=(12, 10))
+# plt.subplot(2, 1, 1)
+if len(ic_ir_list) > 0:
+    axes[0].scatter(range(len(ic_ir_list[:6])), ic_values[:6], label='IC: Weighted Basis Mid')
+    # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IC 值
+axes[0].set_xticks(range(len(ic_ir_list[:6])))
+axes[0].set_xticklabels([ic_ir_list[j] for j in range(len(ic_ir_list[:6]))], rotation=90)
+axes[0].set_xlabel('Features')
+axes[0].set_ylabel('IC')
+axes[0].set_title('Daily Cross-Sectional IC')
+axes[0].grid(True); axes[0].legend()
 
-plt.subplot(2, 2, 2)
-if len(valid_weights) > 0:
-    plt.scatter(valid_weights[:half_N], ir_values[:half_N], label='IR: Weighted Basis Mid', color='orange')
-    plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IR 值
-plt.xlabel('Weight (log scale)')
-plt.ylabel('IR')
-plt.title('Information Ratio (IR)')
-plt.grid(True); plt.legend()
+# plt.subplot(2, 1, 2)
+if len(ic_ir_list) > 0:
+    axes[1].scatter(range(len(ic_ir_list[:6])), ir_values[:6], label='IR: Weighted Basis Mid', color='orange')
+    # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IR 值
+axes[1].set_xticks(range(len(ic_ir_list[:6])))
+axes[1].set_xticklabels([ic_ir_list[j] for j in range(len(ic_ir_list[:6]))], rotation=90)
+axes[1].set_xlabel('Features')
+axes[1].set_ylabel('IR')
+axes[1].set_title('Information Ratio (IR)')
+axes[1].grid(True); axes[1].legend()
 
-# plt.tight_layout()
-# os.makedirs('output', exist_ok=True)
-# plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
-# plt.show()
+if len(ic_ir_list) > 0:
+    axes[2].scatter(range(len(ic_ir_list[6:])), ic_values[6:], label='IC: Weighted Basis Mid')
+    # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IC 值
+axes[2].set_xticks(range(len(ic_ir_list[6:])))
+axes[2].set_xticklabels([ic_ir_list[j] for j in range(6, len(ic_ir_list))], rotation=90)
+axes[2].set_xlabel('Features')
+axes[2].set_ylabel('IC')
+axes[2].set_title('Daily Cross-Sectional IC')
+axes[2].grid(True); axes[2].legend()
+
+# plt.subplot(2, 1, 2)
+if len(ic_ir_list) > 0:
+    axes[3].scatter(range(len(ic_ir_list[6:])), ir_values[6:], label='IR: Weighted Basis Mid', color='orange')
+    # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IR 值
+axes[3].set_xticks(range(len(ic_ir_list[6:])))
+axes[3].set_xticklabels([ic_ir_list[j] for j in range(6, len(ic_ir_list))], rotation=90)
+axes[3].set_xlabel('Features')
+axes[3].set_ylabel('IR')
+axes[3].set_title('Information Ratio (IR)')
+axes[3].grid(True); axes[3].legend()
+
+plt.tight_layout()
+os.makedirs('output', exist_ok=True)
+plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.show()
 
 # plt.tight_layout()
 # output_dir = 'output'
@@ -406,29 +438,29 @@ corr_matrix = df_corr.corr()
 
 
 # 3. Plot using Seaborn
-plt.figure(figsize=(16, 12))
-sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
-plt.title('Correlation Matrix')
-plt.show()
+# plt.figure(figsize=(16, 12))
+# sns.heatmap(corr_matrix, annot=True, cmap='coolwarm', fmt=".2f")
+# plt.title('Correlation Matrix')
+# plt.show()
 
 # Plot mean of f"basis_mid_adjusted_mean_{i}" for i in range(13) against i
-plt.subplot(2, 2, 3)
-for i in range(13):
-    plt.plot(weights[i], df[f'basis_weighted_mid_to_thres_{weights[i]}'].mean(), 'bo')
-plt.xlabel('Index')
-plt.ylabel('Mean of basis_weighted_mid_to_thres')
-plt.title('Mean Values of Weighted Basis Mids')
-plt.grid(True)
-plt.subplot(2, 2, 4)
-for i in range(13):
-    plt.plot(weights[i], df[f'basis_weighted_mid_to_thres_{weights[i]}'].std(), 'bo')
-plt.xlabel('Index')
-plt.ylabel('Standard Deviation of basis_weighted_mid_to_thres')
-plt.title('Standard Deviation Values of Weighted Basis Mids')
-plt.grid(True)
-plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}_{label_name}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+# plt.subplot(2, 2, 3)
+# for i in range(13):
+#     plt.plot(weights[i], df[f'basis_weighted_mid_to_thres_{weights[i]}'].mean(), 'bo')
+# plt.xlabel('Index')
+# plt.ylabel('Mean of basis_weighted_mid_to_thres')
+# plt.title('Mean Values of Weighted Basis Mids')
+# plt.grid(True)
+# plt.subplot(2, 2, 4)
+# for i in range(13):
+#     plt.plot(weights[i], df[f'basis_weighted_mid_to_thres_{weights[i]}'].std(), 'bo')
+# plt.xlabel('Index')
+# plt.ylabel('Standard Deviation of basis_weighted_mid_to_thres')
+# plt.title('Standard Deviation Values of Weighted Basis Mids')
+# plt.grid(True)
+# plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}_{label_name}_delay{delay_precentile}_{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
 
-plt.show()
+# plt.show()
 
 
 
