@@ -173,8 +173,8 @@ def load_market_data(
         df['ts_ms'] = df['time_str'].apply(
             lambda x: int(parse_timestamp(x).timestamp() * 1000) if pd.notna(x) else np.nan
         )
-    print(f"Loaded {len(df)} rows of {data_type} data for {symbol} on {date}")
-    print(df.head())
+    # print(f"Loaded {len(df)} rows of {data_type} data for {symbol} on {date}")
+    # print(df.head())
     return df
 
 
@@ -399,7 +399,7 @@ def run_pipeline(
             
             logger.debug(f"Processing {len(records)} records for {symbol}/{date}")
             
-            print(f"Processing symbol={symbol}, date={date}, records={len(records)}")
+            # print(f"Processing symbol={symbol}, date={date}, records={len(records)}")
             # 1. 设为时间索引并排序（resample 强制要求索引有序）
             
 
@@ -428,10 +428,10 @@ def run_pipeline(
 
             # tf_df.index = pd.to_datetime(tf_df['time_str'])
 
-            print(f"After resampling, ob_df has {len(ob_df)} rows, tf_df has {len(tf_df)} rows")
-            print(f"ob_df time range: {ob_df.index.min()} to {ob_df.index.max()}")
-            print(f"tf_df time range: {tf_df.index.min()} to {tf_df.index.max()}")
-            print(f"head of ob_df:\n{ob_df.head()}")   
+            # print(f"After resampling, ob_df has {len(ob_df)} rows, tf_df has {len(tf_df)} rows")
+            # print(f"ob_df time range: {ob_df.index.min()} to {ob_df.index.max()}")
+            # print(f"tf_df time range: {tf_df.index.min()} to {tf_df.index.max()}")
+            # print(f"head of ob_df:\n{ob_df.head()}")   
             # Process each record
             for _, record in records.iterrows():
                 result = process_single_record(record, ob_df, tf_df)

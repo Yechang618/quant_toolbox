@@ -5,6 +5,8 @@ Core feature engineering logic for slippage research.
 import pandas as pd
 import numpy as np
 from typing import Dict, Optional, Tuple
+
+from sympy import series
 from util.helpers import parse_timestamp, format_float
 from util.binance_meta import get_ticksize_pair
 from util.logger import get_logger
@@ -26,7 +28,7 @@ def single_mixture_weighted_stats(series, weights):
     for w in weights:
         sign = '-' if w < 0 else ''
         log10_w = int(np.log10(np.abs(w))) if w != 0 else 0
-        key_suffix = f'1e{sign}{log10_w}' if w != 0 else '0'
+        key_suffix = f'{sign}1e{log10_w}' if w != 0 else '0'
         scaled = np.clip(w * series, -500, 500)
         exp_vals = np.exp(scaled)
         denom = np.sum(exp_vals)
@@ -47,7 +49,7 @@ def dual_mixture_weighted_stats(series_1, series_2, weights, alphas=[1.0]):
     for w in weights:
         sign = '-' if w < 0 else ''
         log10_w = int(np.log10(np.abs(w))) if w != 0 else 0
-        w_suffix = f'1e{sign}{log10_w}' if w != 0 else '0'
+        w_suffix = f'{sign}1e{log10_w}' if w != 0 else '0'
         for a in alphas:
             scaled_1 = np.clip(w * series_1, -500, 500)
             scaled_2 = np.clip(w * series_2, -500, 500)
@@ -101,19 +103,19 @@ def extract_window_features(
             'swap_midprice_mean', 'swap_midprice_std', 'swap_spread_mean', 
             'swap_depth_imbalance_mean', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 'swap_buy_trade_ratio',
             # 兼容新增的加权特征占位
-            'basis_mid_weighted_mean_-6', 'basis_mid_weighted_std_-6',
-            'basis_mid_weighted_mean_-5', 'basis_mid_weighted_std_-5',
-            'basis_mid_weighted_mean_-4', 'basis_mid_weighted_std_-4',
-            'basis_mid_weighted_mean_-3', 'basis_mid_weighted_std_-3',
-            'basis_mid_weighted_mean_-2', 'basis_mid_weighted_std_-2',
-            'basis_mid_weighted_mean_-1', 'basis_mid_weighted_std_-1',
-            'basis_mid_weighted_mean_0', 'basis_mid_weighted_std_0',
-            'basis_mid_weighted_mean_1', 'basis_mid_weighted_std_1',
-            'basis_mid_weighted_mean_2', 'basis_mid_weighted_std_2',
-            'basis_mid_weighted_mean_3', 'basis_mid_weighted_std_3',
-            'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4',
-            'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5',
-            'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6',
+            # 'basis_mid_weighted_mean_-6', 'basis_mid_weighted_std_-6',
+            # 'basis_mid_weighted_mean_-5', 'basis_mid_weighted_std_-5',
+            # 'basis_mid_weighted_mean_-4', 'basis_mid_weighted_std_-4',
+            # 'basis_mid_weighted_mean_-3', 'basis_mid_weighted_std_-3',
+            # 'basis_mid_weighted_mean_-2', 'basis_mid_weighted_std_-2',
+            # 'basis_mid_weighted_mean_-1', 'basis_mid_weighted_std_-1',
+            # 'basis_mid_weighted_mean_0', 'basis_mid_weighted_std_0',
+            # 'basis_mid_weighted_mean_1', 'basis_mid_weighted_std_1',
+            # 'basis_mid_weighted_mean_2', 'basis_mid_weighted_std_2',
+            # 'basis_mid_weighted_mean_3', 'basis_mid_weighted_std_3',
+            # 'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4',
+            # 'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5',
+            # 'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6',
             'basis_mid_adjusted_mean', 'basis_mid_adjusted_std',
             'basis_mid_capped_mean', 'basis_mid_capped_std',
             'n_basis_bid_mix', 'n_basis_ask_mix', 'n_basis_capped',
@@ -179,12 +181,12 @@ def extract_window_features(
             # sign = np.sign(w)
             sign = '-' if w < 0 else ''
             log10_w = int(np.log10(np.abs(w))) if w != 0 else 0
-            key_suffix = f'1e{sign}{log10_w}' if w != 0 else '0'
+            key_suffix = f'{sign}1e{log10_w}' if w != 0 else '0'
             features[f'basis_mid_weighted_mean_{key_suffix}'] = np.nan
-            features[f'basis_mid_weighted_std_{key_suffix}'] = np.nan
+            # features[f'basis_mid_weighted_std_{key_suffix}'] = np.nan
             for a in alphas:
                 features[f'basis_mid_weighted_mean_{key_suffix}_{a}'] = np.nan
-                features[f'basis_mid_weighted_std_{key_suffix}_{a}'] = np.nan
+                # features[f'basis_mid_weighted_std_{key_suffix}_{a}'] = np.nan
     else:
         results_single = single_mixture_weighted_stats(basis_mid, weights)
         for key_suffix, m in results_single.items():
@@ -236,10 +238,10 @@ def extract_window_features(
     # === Basis Capped Logic ===
     # Mode 2, operation close => basis_ask_mix = (basis_ask, basis_bid_ask) 去掉末尾的10%
 
-    if trade_record.get('mode') == 2:
-        use_bid = trade_record.get('operation') == 'open2'
-    else:
-        use_bid = trade_record.get('operation') != 'open2'
+    # if trade_record.get('mode') == 2:
+    #     use_bid = trade_record.get('operation') == 'open2'
+    # else:
+    #     use_bid = trade_record.get('operation') != 'open2'
 
     # series = np.concatenate([basis_1, basis_2])
     # print(f"basis_1 shape: {basis_1.shape}, basis_2 shape: {basis_2.shape}, combined shape: {series.shape}")
@@ -250,16 +252,29 @@ def extract_window_features(
     #     bound = np.percentile(series, 10)
     #     basis_capped = series[series > bound]
     series = np.concatenate([basis_1, basis_2])
-    if series.size == 0:
-        raise ValueError("basis_1 和 basis_2 均为空，无法计算分位数")
+    # if series.size == 0:
+    #     raise ValueError("basis_1 和 basis_2 均为空，无法计算分位数")
 
-    # 使用 nanpercentile 兼容 NaN
-    bound = np.nanpercentile(series, 90 if trade_record.get('operation') == 'open2' else 10)
+    # # 使用 nanpercentile 兼容 NaN
+    # bound = np.nanpercentile(series, 90 if trade_record.get('operation') == 'open2' else 10)
 
-    if trade_record.get('operation') == 'open2':
-        basis_capped = series[series <= bound]  # 改为 <= 更稳健
+    # if trade_record.get('operation') == 'open2':
+    #     basis_capped = series[series <= bound]  # 改为 <= 更稳健
+    # else:
+    #     basis_capped = series[series >= bound]
+    # ✅ 1. 防御空数组或全 NaN 情况
+    if series.size == 0 or np.all(np.isnan(series)):
+        logger.warning(f"⚠️ Basis series is empty or all-NaN. Skipping quantile calculation.")
+        # 策略选择：跳过当前计算 / 赋予中性值 / 直接 return
+        basis_capped = np.array([], dtype=float)
     else:
-        basis_capped = series[series >= bound]
+        # ✅ 2. 安全计算分位数（此时必含至少一个有效值）
+        if trade_record.get('operation') == 'open2':
+            bound = np.nanpercentile(series, 90)
+            basis_capped = series[series <= bound]  # 或 np.clip(series, a_min=None, a_max=bound)
+        else:
+            bound = np.nanpercentile(series, 10)
+            basis_capped = series[series >= bound]  # 或 np.clip(series, a_min=bound, a_max=None)
 
     features['n_basis_capped'] = len(basis_capped)
     if len(basis_capped) == 0:
@@ -274,10 +289,10 @@ def extract_window_features(
         features['basis_mid_capped_std'] = format_float(np.std(basis_capped, ddof=1) if len(basis_capped) > 1 else np.nan)
 
     # Debug
-    print(f"trade_record keys: {list(trade_record.keys())}")
-    print(f"Extracted features for record with symbol={trade_record.get('symbol')}, exec_ts={trade_record.get('taker_swap_haircut_executed_ts')}")
-    print(f"capped basis count: {features['n_basis_capped']}, capped mean: {features['basis_mid_capped_mean']}, capped std: {features['basis_mid_capped_std']}")
-    print(f"weighted basis mean (w=1): {features.get('basis_mid_weighted_mean_1e0', np.nan)}")
+    # print(f"trade_record keys: {list(trade_record.keys())}")
+    # print(f"Extracted features for record with symbol={trade_record.get('symbol')}, exec_ts={trade_record.get('taker_swap_haircut_executed_ts')}")
+    # print(f"capped basis count: {features['n_basis_capped']}, capped mean: {features['basis_mid_capped_mean']}, capped std: {features['basis_mid_capped_std']}")
+    # print(f"weighted basis mean (w=1): {features.get('basis_mid_weighted_mean_1e0', np.nan)}")
 
     # === Liquidity Features ===
     spot_bid1_qty = ob_window['spot_bid1_qty']
