@@ -90,8 +90,8 @@ def main():
     
     try:
         run_pipeline(
-            date_start='2026-02-15',
-            date_end='2026-03-15',
+            date_start='2026-01-01',
+            date_end='2026-01-31',
             trade_file_pattern=args.trade_file,
             symbols=args.symbol,
             dates=args.date,

@@ -249,3 +249,5 @@ logs/
 *.png
 dataset
 *.pid
+data/step1_windows/
+data/factors_output/
