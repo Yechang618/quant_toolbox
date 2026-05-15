@@ -49,8 +49,19 @@ def get_weighted_stats(series, N_weights = 6):
     for w in range(-N_weights, N_weights+1):
         s = -1 if w < 0 else 1
         key_suffix = f'{w}' if w != 0 else '0'
+        # w = -3, -2, -1, 0, 1, 2, 3 
+        # N_weights = 8
+        # e^{bx}, b = -10^2, -10^1, -1, 0, 1, 10^1, 10^2 => -10^3, -10^2, 0, 1, 10^1, 10^2
+        # Missed: b = -10
+        # w_i = e^{b*x_i}/sum(e^{bx_i})
+        # a_i = sum(x_i*e^{bx_i})
+        # b_i = sum(e^{bx_i})
+        # mean(x_i) = a_i / b_i
+        # mix_mean(x_i, z_i) = (a_i * alpha * a_i(z_i)) / (b_i + alpha * b_i(z_i))
         if abs(w) >= 1:
-            scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+            # clip(bx, -500, 500)
+            # scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+            scaled = np.clip(s * (10**abs(abs(w)-1)) * series, -500, 500)
         elif w == 0:
             scaled = np.clip(series, -500, 500)
         exp_vals = np.exp(scaled)
@@ -60,7 +71,7 @@ def get_weighted_stats(series, N_weights = 6):
         else:
             wght = exp_vals / denom
         weighted_series = series * wght
-        m = np.sum(weighted_series) / (np.sum(wght) + 1e-10)  # 安全除法
+        # m = np.sum(weighted_series) / (np.sum(wght) + 1e-10)  # 安全除法
         results[f'{key_suffix}'] = (np.sum(weighted_series), denom)  # 返回加权均值和加权标准差
     return results
 
@@ -454,6 +465,7 @@ def extract_window_features_simple(
             for w in range(-N_weights, N_weights+1):
                 # sign = '-' if w < 0 else ''
                 # log10_w = abs(w)
+
                 key_suffix = f'{key}_{w}' 
                 features[f'{key_suffix}_sum_ws'] = np.nan
                 features[f'{key_suffix}_sum_w'] = np.nan

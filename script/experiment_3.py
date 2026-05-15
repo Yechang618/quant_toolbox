@@ -28,7 +28,7 @@ models = ['OLS Regression', 'Linear Regression',
           ]
 
 TOLERENCE = 1e-12
-mode = 2
+mode = 0
 delay_exec = ''
 normalize_X = 0
 operation = 'open2'
@@ -169,13 +169,15 @@ if 'basis_ask_mean' in df.columns and 'basis_bid_mean' in df.columns:
 basis_cols = {'baa':['bba', 'bab'], 'bbb':['bab', 'bba']}
 alphas = [.5, 1, 2]
 N_weights = 8
+# b1 = 'baa', 'bbb'
+# b1 + alpha * b2
 for b1 in basis_cols:
     b2_list = basis_cols[b1]
     for b2 in b2_list:
         for alpha in alphas:
             for w in range(-N_weights, N_weights+1):
                 new_col_name = f'BWT_{b1}_{b2}_{w}_{alpha}'
-                new_cols_dict[new_col_name] = (df[f'{b1}_{w}_sum_ws'] +  alpha * df[f'{b2}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + alpha * df[f'{b2}_{w}_sum_w'])) - df['threshold']
+                new_cols_dict[new_col_name] = (df[f'{b1}_{w}_sum_ws'] +  alpha * df[f'{b2}_{w}_sum_ws']) / (df[f'{b1}_{w}_sum_w'] + alpha * df[f'{b2}_{w}_sum_w']) - df['threshold']
                 feature_cols.append(new_col_name)
 
 
@@ -200,10 +202,27 @@ def calc_ae(df, col, label_name):
     y = df.loc[valid_idx, label_name]
     def objective(a):
         return np.sum(np.abs(a * x - y))
+    # x = df['BWT_b1_b2_w_alpha'] 
+    # y = df['gain_vs_threshold']
+    # y_hat = a * x
+    # error = y - y_hat
+    # Return |error| = |y_hat - ax|
+    # min_a |a*x - y| => a
     res = minimize(objective, x0=1.0, method='Nelder-Mead')
     if not res.success:
         print(f"Failed to find optimal a for {col}: {res.x[0]:.4f}, AE: {res.fun:.4f}")
     return res.fun / len(valid_idx) 
+
+def calc_diff(df, col, label_name):
+    valid_idx = df[[col, label_name]].dropna().index
+    if len(valid_idx) < 3:
+        return np.nan
+    x = df.loc[valid_idx, col]
+    y = df.loc[valid_idx, label_name]
+    res = sum(abs(y - x))
+    # if not res.success:
+    #     print(f"Failed to find optimal a for {col}: {res.x[0]:.4f}, AE: {res.fun:.4f}")
+    return res / len(valid_idx) 
 
 # Compute IC/IR/AE(Absolute Error) for feature_cols
 for col in feature_cols:
@@ -223,15 +242,17 @@ for col in feature_cols:
     # ✅ 替换为（安全计算 RMSE，自动处理 NaN）
     ae = calc_ae(df, col, label_name)
     ae = pd.to_numeric(ae, errors='coerce')
+    ab_dif = calc_diff(df, col, label_name)
+    ab_dif = pd.to_numeric(ab_dif, errors='coerce')
     ic_mean = daily_ic.mean()
     ic_std = daily_ic.std()
     ir = ic_mean / ic_std if pd.notna(ic_std) and ic_std > 0 else np.nan
-    print(f"✅ IC of {col}: {ic_mean:.8f} (±{ic_std:.8f}) | IR: {ir:.8f} | AE: {ae:.8f} ")
+    print(f"✅ IC of {col}: {ic_mean:.8f} (±{ic_std:.8f}) | IR: {ir:.8f} | AE: {ae:.8f} | AD: {ab_dif:.8f} ")
 
 # 3. 定义要计算 IC/IR 的因子列表
 ic_ir_list = feature_cols
 ic_ir_list_single = [col for col in ic_ir_list if 'BWT_' in col]
-res_ic_ir_single = np.zeros((len(ic_ir_list_single), 3))
+res_ic_ir_single = np.zeros((len(ic_ir_list_single), 4))
 
 print(f"ICIR list single: {ic_ir_list_single}")
 print(f"Total features to calculate IC/IR: {len(ic_ir_list_single)}")
@@ -257,6 +278,8 @@ for i, factor_name in enumerate(ic_ir_list_single):
     # ✅ 替换为（修正拼写 + 兼容新版 sklearn）
     ae = calc_ae(df, factor_name, label_name)
     ae = pd.to_numeric(ae, errors='coerce')
+    ab_dif = calc_diff(df, factor_name, label_name)
+    ab_dif = pd.to_numeric(ab_dif, errors='coerce')
 
     ic_mean = daily_ic.mean()
     ic_std = daily_ic.std()
@@ -266,7 +289,7 @@ for i, factor_name in enumerate(ic_ir_list_single):
     res_ic_ir_single[i, 0] = ic_mean
     res_ic_ir_single[i, 1] = ir
     res_ic_ir_single[i, 2] = ae
-
+    res_ic_ir_single[i, 3] = ab_dif
 # Plot 10 features with highest IC values
 ic_values = res_ic_ir_single[:, 0]
 top_10_features = sorted(zip(ic_ir_list_single, ic_values), key=lambda x: x[1], reverse=True)[:10]
@@ -303,6 +326,20 @@ top_10_ae_values = [ae for _, ae in top_10_ae_features]
 print("Top 10 features by AE (lower is better):")
 for name, ae in top_10_ae_features:
     print(f"{name}: AE={ae:.8f}")
+# Plot 10 features with lowest ab_dif values
+ab_dif_values = res_ic_ir_single[:, 3]
+top_10_ab_dif_features = sorted(zip(ic_ir_list_single, ab_dif_values), key=lambda x: x[1])
+# Remove Inf and NaN from top_10_ab_dif_features
+top_10_ab_dif_features = [(name, ab_dif) for name, ab_dif in top_10_ab_dif_features if pd.notna(ab_dif) and np.isfinite(ab_dif)]
+top_10_ab_dif_features  = top_10_ab_dif_features [:10]
+print(f"top 10: {top_10_ab_dif_features[:10]}")
+top_10_ab_dif_feature_names = [name for name, _ in top_10_ab_dif_features]
+top_10_ab_dif_values = [ab_dif for _, ab_dif in top_10_ab_dif_features]
+print("Top 10 features by Absolute Difference (lower is better):")
+for name, ab_dif in top_10_ab_dif_features:
+    print(f"{name}: AD={ab_dif:.8f}")
+
+
 # bottom_10_ae_features = sorted(zip(ic_ir_list_single, ae_values), key=lambda x: x[1], reverse=True)[:10]
 # bottom_10_ae_feature_names = [name for name, _ in bottom_10_ae_features]
 # bottom_10_ae_values = [ae for _, ae in bottom_10_ae_features]
@@ -313,31 +350,39 @@ for name, ae in top_10_ae_features:
 
 
 # Plotting using matplotlib, subplots for IC and IR
-fig, axes = plt.subplots(1, 3, figsize=(27, 6))
+fig, axes = plt.subplots(2, 2, figsize=(24, 24))
 # IC plot
-axes[0].bar(top_10_feature_names, top_10_ic_values, color='green', label='Top 10 IC')
-axes[0].bar(bottom_10_feature_names, bottom_10_ic_values, color='red', label='Bottom 10 IC')
-axes[0].set_xticklabels(top_10_feature_names + bottom_10_feature_names, rotation=90)
-axes[0].set_xlabel('Features')
-axes[0].set_ylabel('IC')
-axes[0].set_title('Top/Bottom 10 Features by IC')
-axes[0].grid(True); axes[0].legend()
+axes[0, 0].bar(top_10_feature_names, top_10_ic_values, color='green', label='Top 10 IC')
+axes[0, 0].bar(bottom_10_feature_names, bottom_10_ic_values, color='red', label='Bottom 10 IC')
+axes[0, 0].set_xticklabels(top_10_feature_names + bottom_10_feature_names, rotation=90)
+axes[0, 0].set_xlabel('Features')
+axes[0, 0].set_ylabel('IC')
+axes[0, 0].set_title('Top/Bottom 10 Features by IC')
+axes[0, 0].grid(True); axes[0, 0].legend()
 # IR plot
-axes[1].bar(top_10_ir_feature_names, top_10_ir_values, color='blue', label='Top 10 IR')
-axes[1].bar(bottom_10_ir_feature_names, bottom_10_ir_values, color='orange', label='Bottom 10 IR')
-axes[1].set_xticklabels(top_10_ir_feature_names + bottom_10_ir_feature_names, rotation=90)
-axes[1].set_xlabel('Features')
-axes[1].set_ylabel('IR')
-axes[1].set_title('Top/Bottom 10 Features by IR')
-axes[1].grid(True); axes[1].legend()
+axes[0, 1].bar(top_10_ir_feature_names, top_10_ir_values, color='blue', label='Top 10 IR')
+axes[0, 1].bar(bottom_10_ir_feature_names, bottom_10_ir_values, color='orange', label='Bottom 10 IR')
+axes[0, 1].set_xticklabels(top_10_ir_feature_names + bottom_10_ir_feature_names, rotation=90)
+axes[0, 1].set_xlabel('Features')
+axes[0, 1].set_ylabel('IR')
+axes[0, 1].set_title('Top/Bottom 10 Features by IR')
+axes[0, 1].grid(True); axes[0, 1].legend()
 # AE plot
-axes[2].bar(top_10_ae_feature_names, top_10_ae_values, color='purple', label='Top 10 AE')
-# axes[2].bar(bottom_10_ae_feature_names, bottom_10_ae_values, color='yellow', label='Bottom 10 AE')
-axes[2].set_xticklabels(top_10_ae_feature_names, rotation=90)
-axes[2].set_xlabel('Features')
-axes[2].set_ylabel('AE')
-axes[2].set_title('10 Features w. smallest AE')
-axes[2].grid(True); axes[2].legend()
+axes[1, 0].bar(top_10_ae_feature_names, top_10_ae_values, color='purple', label='Top 10 AE')
+# axes[1, 0].bar(bottom_10_ae_feature_names, bottom_10_ae_values, color='yellow', label='Bottom 10 AE')
+axes[1, 0].set_xticklabels(top_10_ae_feature_names, rotation=90)
+axes[1, 0].set_xlabel('Features')
+axes[1, 0].set_ylabel('AE')
+axes[1, 0].set_title('10 Features w. smallest AE')
+axes[1, 0].grid(True); axes[1, 0].legend()
+# ab_dif plot
+axes[1,1].bar(top_10_ab_dif_feature_names, top_10_ab_dif_values, color='cyan', label='Top 10 AD')
+# axes[1,1].bar(bottom_10_ab_dif_feature_names, bottom_10_ab_dif_values, color='magenta', label='Bottom 10 AD')
+axes[1,1].set_xticklabels(top_10_ab_dif_feature_names, rotation=90)
+axes[1,1].set_xlabel('Features')
+axes[1,1].set_ylabel('Absolute Difference')
+axes[1,1].set_title('10 Features w. smallest Absolute Difference')
+axes[1,1].grid(True); axes[1,1].legend()
 plt.tight_layout()
 os.makedirs('output', exist_ok=True)
 plt.savefig(f'output/top_bottom_ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
