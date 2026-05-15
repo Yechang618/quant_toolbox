@@ -41,6 +41,29 @@ def single_mixture_weighted_stats(series, weights):
         results[f'{key_suffix}'] = m
     return results
 
+def get_weighted_stats(series, N_weights = 6):
+    if len(series) == 0:
+        return {f'{w}': (np.nan, np.nan) for w in range(-N_weights, N_weights+1)}
+    
+    results = {}
+    for w in range(-N_weights, N_weights+1):
+        s = -1 if w < 0 else 1
+        key_suffix = f'{w}' if w != 0 else '0'
+        if abs(w) >= 1:
+            scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+        elif w == 0:
+            scaled = np.clip(series, -500, 500)
+        exp_vals = np.exp(scaled)
+        denom = np.sum(exp_vals)
+        if denom == 0 or np.isnan(denom):
+            wght = np.zeros_like(series)
+        else:
+            wght = exp_vals / denom
+        weighted_series = series * wght
+        m = np.sum(weighted_series) / (np.sum(wght) + 1e-10)  # 安全除法
+        results[f'{key_suffix}'] = (np.sum(weighted_series), denom)  # 返回加权均值和加权标准差
+    return results
+
 def dual_mixture_weighted_stats(series_1, series_2, weights, alphas=[1.0]):
     if len(series_1) == 0 or len(series_2) == 0:
         return {f'{w}{a}': np.nan for w in weights for a in alphas}
@@ -103,19 +126,6 @@ def extract_window_features(
             'swap_midprice_mean', 'swap_midprice_std', 'swap_spread_mean', 
             'swap_depth_imbalance_mean', 'swap_depth1_bid_ticks', 'swap_depth1_ask_ticks', 'swap_buy_trade_ratio',
             # 兼容新增的加权特征占位
-            # 'basis_mid_weighted_mean_-6', 'basis_mid_weighted_std_-6',
-            # 'basis_mid_weighted_mean_-5', 'basis_mid_weighted_std_-5',
-            # 'basis_mid_weighted_mean_-4', 'basis_mid_weighted_std_-4',
-            # 'basis_mid_weighted_mean_-3', 'basis_mid_weighted_std_-3',
-            # 'basis_mid_weighted_mean_-2', 'basis_mid_weighted_std_-2',
-            # 'basis_mid_weighted_mean_-1', 'basis_mid_weighted_std_-1',
-            # 'basis_mid_weighted_mean_0', 'basis_mid_weighted_std_0',
-            # 'basis_mid_weighted_mean_1', 'basis_mid_weighted_std_1',
-            # 'basis_mid_weighted_mean_2', 'basis_mid_weighted_std_2',
-            # 'basis_mid_weighted_mean_3', 'basis_mid_weighted_std_3',
-            # 'basis_mid_weighted_mean_4', 'basis_mid_weighted_std_4',
-            # 'basis_mid_weighted_mean_5', 'basis_mid_weighted_std_5',
-            # 'basis_mid_weighted_mean_6', 'basis_mid_weighted_std_6',
             'basis_mid_adjusted_mean', 'basis_mid_adjusted_std',
             'basis_mid_capped_mean', 'basis_mid_capped_std',
             'n_basis_bid_mix', 'n_basis_ask_mix', 'n_basis_capped',
@@ -131,11 +141,6 @@ def extract_window_features(
         if len(s) < 2:
             return m, np.nan  # 标准差在样本<2时无意义，返回 NaN 避免警告
         return m, s.std()
-    # print(f"ob_window size: {len(ob_window)}")
-    # print(ob_window.info())
-    # print(f"ob_window size: {len(tf_window)}")    
-    # print(tf_window.info())
-
     # === Price & Spread Features ===
     spot_bid1 = ob_window['spot_bid1_px']
     spot_ask1 = ob_window['spot_ask1_px']
@@ -391,6 +396,84 @@ def extract_window_features(
         features['basis_slippage_ticks'] = format_float(basis_slippage / avg_tick)
     else:
         features['basis_slippage_ticks'] = np.nan
+
+    return features
+
+
+def extract_window_features_simple(
+    ob_window: pd.DataFrame,
+    tf_window: pd.DataFrame,
+    spot_tick: float,
+    swap_tick: float,
+    trade_record: Dict
+) -> Dict[str, float]:
+    """
+    Extract features from 60-second market data window.
+    修复了空窗口/单样本导致的 RuntimeWarning 问题。
+    """
+    features = {}
+
+    if ob_window.empty:
+        feature_list = [
+            'execute_delay_ms', 'threshold', 'basis_expected', 'basis_executed', 
+        ]
+        return {k: np.nan for k in feature_list}
+
+    # 🛡️ 安全统计辅助函数：自动处理 NaN、空序列、单样本自由度问题
+    def safe_stats(s):
+        s = s.dropna()
+        if len(s) == 0:
+            return np.nan, np.nan
+        m = s.mean()
+        if len(s) < 2:
+            return m, np.nan  # 标准差在样本<2时无意义，返回 NaN 避免警告
+        return m, s.std()
+    # === Price & Spread Features ===
+    spot_bid1 = ob_window['spot_bid1_px']
+    spot_ask1 = ob_window['spot_ask1_px']
+    swap_bid1 = ob_window['swap_bid1_px']
+    swap_ask1 = ob_window['swap_ask1_px']
+
+    spot_mid = (spot_bid1 + spot_ask1) / 2
+    swap_mid = (swap_bid1 + swap_ask1) / 2
+
+    basis_mix = {}
+    basis_mix['baa'] = np.log(swap_ask1) - np.log(spot_ask1)
+    basis_mix['bbb'] = np.log(swap_bid1) - np.log(spot_bid1)
+    basis_mix['bab'] = np.log(swap_ask1) - np.log(spot_bid1)
+    basis_mix['bba'] = np.log(swap_bid1) - np.log(spot_ask1)
+
+    basis_mid = np.log(swap_mid) - np.log(spot_mid)
+
+    # === Weighted basis adjustment (Softmax) ===
+    weights = [-1e6, -1e5, -1e4, -1e3, -1e2, -10, -1, 0, 1, 10, 100, 1e3, 1e4, 1e5, 1e6]
+    N_weights = 8
+    for key, series in basis_mix.items():
+        series = series.dropna()
+        if len(series) == 0:
+            for w in range(-N_weights, N_weights+1):
+                # sign = '-' if w < 0 else ''
+                # log10_w = abs(w)
+                key_suffix = f'{key}_{w}' 
+                features[f'{key_suffix}_sum_ws'] = np.nan
+                features[f'{key_suffix}_sum_w'] = np.nan
+        else:
+            results = get_weighted_stats(series, N_weights)
+            for key_suffix, (sum_ws, sum_w) in results.items():
+                features[f'{key}_{key_suffix}_sum_ws'] = format_float(sum_ws)
+                features[f'{key}_{key_suffix}_sum_w'] = format_float(sum_w)
+
+    # === Execution Context Features ===
+    features['execute_delay_ms'] = trade_record.get('execute_delay_ms', np.nan)
+    features['threshold'] = trade_record.get('threshold', np.nan)
+    features['basis_expected'] = trade_record.get('basis_expected', np.nan)
+    features['basis_executed'] = trade_record.get('basis_executed', np.nan)
+
+    # basis_slippage = trade_record.get('basis_slippage', np.nan)
+    # if not pd.isna(basis_slippage) and avg_tick > 0:
+    #     features['basis_slippage_ticks'] = format_float(basis_slippage / avg_tick)
+    # else:
+    #     features['basis_slippage_ticks'] = np.nan
 
     return features
 

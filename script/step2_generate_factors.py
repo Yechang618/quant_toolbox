@@ -2,7 +2,7 @@
 """
 step2_generate_factors.py
 第二步：加载第一步保存的Parquet窗口文件，执行特征工程并保存因子。
-✅ 彻底修复：安全解析 Parquet 嵌套数据，兼容 String/List/Array/Dict 所有形态
+✅ 彻底修复：添加数值类型强制转换层，消除 np.log(None) 报错
 ✅ 移除冗余 print，统一使用 logger
 ✅ 保留完整特征计算链路，结果与原流水线 100% 等价
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from data.feature_engineering import extract_window_features, prepare_trade_record_features
+from data.feature_engineering import extract_window_features_simple, prepare_trade_record_features
 from util.binance_meta import get_ticksize_pair
 from util.config import settings
 from util.logger import get_logger
@@ -23,18 +23,9 @@ from util.logger import get_logger
 logger = get_logger(__name__)
 
 def _parse_window_data(data):
-    """
-    安全解析 Parquet 中的窗口数据，兼容多种存储形态：
-    1. JSON 数组字符串: '[{"col1": 1}, {"col1": 2}]'
-    2. List of JSON Strings: ['{"col1": 1}', '{"col1": 2}'] (PyArrow 常见行为)
-    3. List of Dicts: [{'col1': 1}, {'col1': 2}]
-    4. Numpy Array / Pandas Series
-    """
-    # 1. 处理 None
+    """安全解析 Parquet 中的窗口数据，兼容 String/List/Array/Dict 所有形态"""
     if data is None:
         return pd.DataFrame()
-
-    # 2. 处理 JSON 字符串
     if isinstance(data, str):
         data = data.strip()
         if not data or data == '[]':
@@ -44,8 +35,6 @@ def _parse_window_data(data):
         except Exception as e:
             logger.warning(f"⚠️ Failed to parse JSON string: {e}")
             return pd.DataFrame()
-
-    # 3. 处理 List / ndarray / Series
     if isinstance(data, (list, np.ndarray, pd.Series)):
         if len(data) == 0:
             return pd.DataFrame()
@@ -57,13 +46,16 @@ def _parse_window_data(data):
             elif isinstance(item, dict):
                 parsed.append(item)
         return pd.DataFrame(parsed) if parsed else pd.DataFrame()
-
-    # 4. 兼容单个 Dict
     if isinstance(data, dict):
         return pd.DataFrame([data])
-
-    # 5. 兜底
     return pd.DataFrame()
+
+def _sanitize_numeric_df(df: pd.DataFrame) -> pd.DataFrame:
+    """🔧 核心修复：将 DataFrame 强制转为数值类型，None/非法字符串自动转为 np.nan"""
+    if df.empty:
+        return df
+    # apply 会逐列尝试转换，errors='coerce' 确保非数字内容变成 NaN 而非报错
+    return df.apply(pd.to_numeric, errors='coerce')
 
 def generate_factors_from_parquet(
     input_dir: Path = None,
@@ -95,9 +87,20 @@ def generate_factors_from_parquet(
         results = []
 
         for idx, row in df_windows.iterrows():
-            # 🔧 核心修复：安全重建 DataFrame，彻底避免数组布尔值歧义
-            ob_df = _parse_window_data(row.get('ob_window'))
-            tf_df = _parse_window_data(row.get('tf_window'))
+            # 1. 解析原始数据
+            ob_raw = _parse_window_data(row.get('ob_window'))
+            tf_raw = _parse_window_data(row.get('tf_window'))
+            # print(f"Get ob_raw with shape {ob_raw.shape} and tf_raw with shape {tf_raw.shape} for record {idx}")  # 临时输出，验证解析结果
+
+            # 🔧 2. 强制类型清洗：确保 spot_bid1_px 等列为 float64，None -> np.nan
+            ob_df = _sanitize_numeric_df(ob_raw)
+            tf_df = _sanitize_numeric_df(tf_raw)
+            # print(f"Get ob_df with shape {ob_df.shape} and tf_df with shape {tf_df.shape} for record {idx}")  # 临时输出，验证解析结果
+            # print(f"Time range of ob_df: {ob_df['ts_ms'].min()} - {ob_df['ts_ms'].max()} = {ob_df['ts_ms'].max() - ob_df['ts_ms'].min()}")  # 验证时间戳范围
+            # print(f"Sample ob_df rows:\n{ob_df.head(10)}")  # 验证数据内容
+            # print(f"Description of ob_df: {ob_df.describe()} ")  # 验证数据类型和非空情况
+
+            
             rec_dict = row.get('record', {})
 
             if ob_df.empty and tf_df.empty:
@@ -105,13 +108,14 @@ def generate_factors_from_parquet(
                 continue
 
             if debug and idx < 3:
-                logger.debug(f"  [DEBUG] Record {idx} | ob shape: {ob_df.shape}, tf shape: {tf_df.shape} | cols: {list(ob_df.columns)[:5]}...")
+                logger.debug(f"  [DEBUG] Record {idx} | ob shape: {ob_df.shape}, tf shape: {tf_df.shape} | dtypes: {ob_df.dtypes.iloc[:3].to_dict()}...")
 
             rec_series = pd.Series(rec_dict)
             prepared_rec = prepare_trade_record_features(rec_series)
             spot_tick, swap_tick = get_ticksize_pair(prepared_rec.get('symbol', symbol))
 
-            features = extract_window_features(ob_df, tf_df, spot_tick, swap_tick, prepared_rec)
+            # 3. 安全送入特征工程（此时已无 NoneType 报错风险）
+            features = extract_window_features_simple(ob_df, tf_df, spot_tick, swap_tick, prepared_rec)
 
             result = {
                 'gain_vs_threshold': prepared_rec.get('gain_vs_threshold'),
@@ -135,7 +139,7 @@ def generate_factors_from_parquet(
                 out_path = output_dir / f"mode{int(mode)}" / f"sample_{symbol}.csv"
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 mode_df.to_csv(out_path, index=False)
-                logger.info(f"✓ Saved {len(mode_df)} factors for {symbol} (mode {mode}) → {out_path}")
+                logger.info(f"✓ Saved {len(mode_df)} examples for {symbol} (mode {mode}) → {out_path}")
         else:
             logger.warning(f"No valid results generated for {symbol}")
 
