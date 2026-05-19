@@ -28,12 +28,16 @@ models = ['OLS Regression', 'Linear Regression',
           ]
 
 TOLERENCE = 1e-12
-mode = 0
+# mode = 2
 delay_exec = ''
 normalize_X = 0
-operation = 'open2'
+# operation = 'open2'
 # operation = 'close2'
-delay_precentile = 85
+# mode, operation = 2, 'close2'
+# mode, operation = 2, 'open2'
+# mode, operation = 0, 'close2'
+mode, operation = 0, 'open2'
+delay_precentile = 95
 beta = 1
 symbol = 'all'
 # symbol = 'ZENUSDT'
@@ -173,12 +177,21 @@ N_weights = 8
 # b1 + alpha * b2
 for b1 in basis_cols:
     b2_list = basis_cols[b1]
+    for w in range(-N_weights, N_weights+1):
+        new_col_name = f'BWT_{b1}_{w}'
+        new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
+        feature_cols.append(new_col_name)
     for b2 in b2_list:
         for alpha in alphas:
             for w in range(-N_weights, N_weights+1):
+                # Method 1
                 new_col_name = f'BWT_{b1}_{b2}_{w}_{alpha}'
                 new_cols_dict[new_col_name] = (df[f'{b1}_{w}_sum_ws'] +  alpha * df[f'{b2}_{w}_sum_ws']) / (df[f'{b1}_{w}_sum_w'] + alpha * df[f'{b2}_{w}_sum_w']) - df['threshold']
                 feature_cols.append(new_col_name)
+                # Method 2 (alternative weighting scheme)
+                new_col_name_alt = f'BWT2_{b1}_{b2}_{w}_{alpha}'
+                new_cols_dict[new_col_name_alt] = (df[f'{b1}_{w}_sum_ws']/(df[f'{b1}_{w}_sum_w']+1e-10)  +  alpha * df[f'{b2}_{w}_sum_ws']/(df[f'{b2}_{w}_sum_w']+1e-10)) / (1 + alpha) - df['threshold']
+                feature_cols.append(new_col_name_alt)
 
 
 # 一次性追加所有新列到 DataFrame
@@ -251,8 +264,8 @@ for col in feature_cols:
 
 # 3. 定义要计算 IC/IR 的因子列表
 ic_ir_list = feature_cols
-ic_ir_list_single = [col for col in ic_ir_list if 'BWT_' in col]
-res_ic_ir_single = np.zeros((len(ic_ir_list_single), 4))
+ic_ir_list_single = [col for col in ic_ir_list if 'BWT' in col]
+res_ic_ir_single = np.zeros((len(ic_ir_list_single), 3))
 
 print(f"ICIR list single: {ic_ir_list_single}")
 print(f"Total features to calculate IC/IR: {len(ic_ir_list_single)}")
@@ -276,8 +289,8 @@ for i, factor_name in enumerate(ic_ir_list_single):
     daily_ic = df.groupby('date').apply(calc_daily_ic)
     daily_ic = pd.to_numeric(daily_ic, errors='coerce')  # 强制转 float 防 object 类型报错
     # ✅ 替换为（修正拼写 + 兼容新版 sklearn）
-    ae = calc_ae(df, factor_name, label_name)
-    ae = pd.to_numeric(ae, errors='coerce')
+    # ae = calc_ae(df, factor_name, label_name)
+    # ae = pd.to_numeric(ae, errors='coerce')
     ab_dif = calc_diff(df, factor_name, label_name)
     ab_dif = pd.to_numeric(ab_dif, errors='coerce')
 
@@ -288,8 +301,8 @@ for i, factor_name in enumerate(ic_ir_list_single):
     # print(f"✅ IC of {factor_name}: {ic_mean:.8f} (±{ic_std:.8f}) | IR: {ir:.8f}")
     res_ic_ir_single[i, 0] = ic_mean
     res_ic_ir_single[i, 1] = ir
-    res_ic_ir_single[i, 2] = ae
-    res_ic_ir_single[i, 3] = ab_dif
+    # res_ic_ir_single[i, 2] = ae
+    res_ic_ir_single[i, 2] = ab_dif
 # Plot 10 features with highest IC values
 ic_values = res_ic_ir_single[:, 0]
 top_10_features = sorted(zip(ic_ir_list_single, ic_values), key=lambda x: x[1], reverse=True)[:10]
@@ -319,15 +332,15 @@ print("Bottom 10 features by IR:")
 for name, ir in bottom_10_ir_features:
     print(f"{name}: IR={ir:.8f}")
 # Plot 10 features with highest AE values
-ae_values = res_ic_ir_single[:, 2]
-top_10_ae_features = sorted(zip(ic_ir_list_single, ae_values), key=lambda x: x[1])[:10]
-top_10_ae_feature_names = [name for name, _ in top_10_ae_features]
-top_10_ae_values = [ae for _, ae in top_10_ae_features]
-print("Top 10 features by AE (lower is better):")
-for name, ae in top_10_ae_features:
-    print(f"{name}: AE={ae:.8f}")
+# ae_values = res_ic_ir_single[:, 2]
+# top_10_ae_features = sorted(zip(ic_ir_list_single, ae_values), key=lambda x: x[1])[:10]
+# top_10_ae_feature_names = [name for name, _ in top_10_ae_features]
+# top_10_ae_values = [ae for _, ae in top_10_ae_features]
+# print("Top 10 features by AE (lower is better):")
+# for name, ae in top_10_ae_features:
+#     print(f"{name}: AE={ae:.8f}")
 # Plot 10 features with lowest ab_dif values
-ab_dif_values = res_ic_ir_single[:, 3]
+ab_dif_values = res_ic_ir_single[:, 2]
 top_10_ab_dif_features = sorted(zip(ic_ir_list_single, ab_dif_values), key=lambda x: x[1])
 # Remove Inf and NaN from top_10_ab_dif_features
 top_10_ab_dif_features = [(name, ab_dif) for name, ab_dif in top_10_ab_dif_features if pd.notna(ab_dif) and np.isfinite(ab_dif)]
@@ -368,13 +381,13 @@ axes[0, 1].set_ylabel('IR')
 axes[0, 1].set_title('Top/Bottom 10 Features by IR')
 axes[0, 1].grid(True); axes[0, 1].legend()
 # AE plot
-axes[1, 0].bar(top_10_ae_feature_names, top_10_ae_values, color='purple', label='Top 10 AE')
-# axes[1, 0].bar(bottom_10_ae_feature_names, bottom_10_ae_values, color='yellow', label='Bottom 10 AE')
-axes[1, 0].set_xticklabels(top_10_ae_feature_names, rotation=90)
-axes[1, 0].set_xlabel('Features')
-axes[1, 0].set_ylabel('AE')
-axes[1, 0].set_title('10 Features w. smallest AE')
-axes[1, 0].grid(True); axes[1, 0].legend()
+# axes[1, 0].bar(top_10_ae_feature_names, top_10_ae_values, color='purple', label='Top 10 AE')
+# # axes[1, 0].bar(bottom_10_ae_feature_names, bottom_10_ae_values, color='yellow', label='Bottom 10 AE')
+# axes[1, 0].set_xticklabels(top_10_ae_feature_names, rotation=90)
+# axes[1, 0].set_xlabel('Features')
+# axes[1, 0].set_ylabel('AE')
+# axes[1, 0].set_title('10 Features w. smallest AE')
+# axes[1, 0].grid(True); axes[1, 0].legend()
 # ab_dif plot
 axes[1,1].bar(top_10_ab_dif_feature_names, top_10_ab_dif_values, color='cyan', label='Top 10 AD')
 # axes[1,1].bar(bottom_10_ab_dif_feature_names, bottom_10_ab_dif_values, color='magenta', label='Bottom 10 AD')
@@ -385,7 +398,7 @@ axes[1,1].set_title('10 Features w. smallest Absolute Difference')
 axes[1,1].grid(True); axes[1,1].legend()
 plt.tight_layout()
 os.makedirs('output', exist_ok=True)
-plt.savefig(f'output/top_bottom_ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'output/res_ic_ir_diff_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', bbox_inches='tight')
 
 
 
