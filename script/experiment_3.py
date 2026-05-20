@@ -35,8 +35,8 @@ normalize_X = 0
 # operation = 'close2'
 # mode, operation = 2, 'close2'
 # mode, operation = 2, 'open2'
-# mode, operation = 0, 'close2'
-mode, operation = 0, 'open2'
+mode, operation = 0, 'close2'
+# mode, operation = 0, 'open2'
 delay_precentile = 95
 beta = 1
 symbol = 'all'
@@ -226,12 +226,14 @@ def calc_ae(df, col, label_name):
         print(f"Failed to find optimal a for {col}: {res.x[0]:.4f}, AE: {res.fun:.4f}")
     return res.fun / len(valid_idx) 
 
-def calc_diff(df, col, label_name):
+def calc_diff(df, col, label_name, op = 'open2'):
     valid_idx = df[[col, label_name]].dropna().index
     if len(valid_idx) < 3:
         return np.nan
     x = df.loc[valid_idx, col]
     y = df.loc[valid_idx, label_name]
+    if op == 'close2':
+        y = -y
     res = sum(abs(y - x))
     # if not res.success:
     #     print(f"Failed to find optimal a for {col}: {res.x[0]:.4f}, AE: {res.fun:.4f}")
@@ -255,7 +257,7 @@ for col in feature_cols:
     # ✅ 替换为（安全计算 RMSE，自动处理 NaN）
     ae = calc_ae(df, col, label_name)
     ae = pd.to_numeric(ae, errors='coerce')
-    ab_dif = calc_diff(df, col, label_name)
+    ab_dif = calc_diff(df, col, label_name, op = operation)
     ab_dif = pd.to_numeric(ab_dif, errors='coerce')
     ic_mean = daily_ic.mean()
     ic_std = daily_ic.std()
@@ -291,7 +293,7 @@ for i, factor_name in enumerate(ic_ir_list_single):
     # ✅ 替换为（修正拼写 + 兼容新版 sklearn）
     # ae = calc_ae(df, factor_name, label_name)
     # ae = pd.to_numeric(ae, errors='coerce')
-    ab_dif = calc_diff(df, factor_name, label_name)
+    ab_dif = calc_diff(df, factor_name, label_name, op = operation)
     ab_dif = pd.to_numeric(ab_dif, errors='coerce')
 
     ic_mean = daily_ic.mean()
@@ -400,8 +402,77 @@ plt.tight_layout()
 os.makedirs('output', exist_ok=True)
 plt.savefig(f'output/res_ic_ir_diff_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', bbox_inches='tight')
 
+# =============================================================================
+# 📊 独立绘制并保存三个图表：IC / IR / Absolute Difference
+# =============================================================================
+os.makedirs('output', exist_ok=True)
 
+# -----------------------------------------------------------------------------
+# 1️⃣ IC Plot: Top/Bottom 10 Features by Information Coefficient
+# -----------------------------------------------------------------------------
+fig_ic, ax_ic = plt.subplots(figsize=(14, 8))
+all_ic_names = top_10_feature_names + bottom_10_feature_names
+n_top = len(top_10_feature_names)
+n_bottom = len(bottom_10_feature_names)
 
+# ✅ 核心修复：分开绘制，避免 label 数量不匹配报错
+ax_ic.bar(range(n_top), top_10_ic_values, color='green', label='Top 10 IC')
+ax_ic.bar(range(n_top, n_top + n_bottom), bottom_10_ic_values, color='red', label='Bottom 10 IC')
+
+ax_ic.set_xticks(range(len(all_ic_names)))
+ax_ic.set_xticklabels(all_ic_names, rotation=90, ha='right', fontsize=9)
+ax_ic.set_xlabel('Features', fontsize=11)
+ax_ic.set_ylabel('Information Coefficient (IC)', fontsize=11)
+ax_ic.set_title(f'Top/Bottom 10 Features by IC | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
+ax_ic.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig(f'output/ic_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_ic)
+print(f"✓ Saved IC plot → ic_ranking_*.png")
+
+# -----------------------------------------------------------------------------
+# 2️⃣ IR Plot: Top/Bottom 10 Features by Information Ratio
+# -----------------------------------------------------------------------------
+fig_ir, ax_ir = plt.subplots(figsize=(14, 8))
+all_ir_names = top_10_ir_feature_names + bottom_10_ir_feature_names
+n_top_ir = len(top_10_ir_feature_names)
+n_bottom_ir = len(bottom_10_ir_feature_names)
+
+ax_ir.bar(range(n_top_ir), top_10_ir_values, color='blue', label='Top 10 IR')
+ax_ir.bar(range(n_top_ir, n_top_ir + n_bottom_ir), bottom_10_ir_values, color='orange', label='Bottom 10 IR')
+
+ax_ir.set_xticks(range(len(all_ir_names)))
+ax_ir.set_xticklabels(all_ir_names, rotation=90, ha='right', fontsize=9)
+ax_ir.set_xlabel('Features', fontsize=11)
+ax_ir.set_ylabel('Information Ratio (IR)', fontsize=11)
+ax_ir.set_title(f'Top/Bottom 10 Features by IR | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+ax_ir.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+ax_ir.grid(True, axis='y', linestyle=':', alpha=0.7)
+ax_ir.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig(f'output/ir_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_ir)
+print(f"✓ Saved IR plot → ir_ranking_*.png")
+
+# -----------------------------------------------------------------------------
+# 3️⃣ Absolute Difference Plot: 10 Features with Smallest |Predicted - Actual|
+# -----------------------------------------------------------------------------
+# (注：此处假设 top_10_ab_dif_feature_names / values 已在上方正确计算)
+fig_ad, ax_ad = plt.subplots(figsize=(14, 8))
+ax_ad.bar(range(len(top_10_ab_dif_feature_names)), top_10_ab_dif_values, color='cyan', edgecolor='darkcyan', label='Top 10 Smallest AD')
+ax_ad.set_xticks(range(len(top_10_ab_dif_feature_names)))
+ax_ad.set_xticklabels(top_10_ab_dif_feature_names, rotation=90, ha='right', fontsize=9)
+ax_ad.set_xlabel('Features', fontsize=11)
+ax_ad.set_ylabel('Mean Absolute Difference (MAD)', fontsize=11)
+ax_ad.set_title(f'10 Features with Smallest Prediction Error | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+ax_ad.grid(True, axis='y', linestyle=':', alpha=0.7)
+ax_ad.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig(f'output/ae_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_ad)
+print(f"✓ Saved AE plot → ae_ranking_*.png")
 # # 严格过滤 NaN 保证 x/y 长度一致
 # valid_mask = [pd.notna(x[0]) for x in res_ic_ir_single]
 # valid_weights = [w for w, v in zip(plot_weights, valid_mask) if v]
