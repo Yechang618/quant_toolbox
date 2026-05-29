@@ -31,12 +31,10 @@ TOLERENCE = 1e-12
 # mode = 2
 delay_exec = ''
 normalize_X = 0
-# operation = 'open2'
-# operation = 'close2'
 # mode, operation = 2, 'close2'
 # mode, operation = 2, 'open2'
-mode, operation = 0, 'close2'
-# mode, operation = 0, 'open2'
+# mode, operation = 0, 'close2'
+mode, operation = 0, 'open2'
 delay_precentile = 95
 beta = 1
 symbol = 'all'
@@ -193,6 +191,21 @@ for b1 in basis_cols:
                 new_cols_dict[new_col_name_alt] = (df[f'{b1}_{w}_sum_ws']/(df[f'{b1}_{w}_sum_w']+1e-10)  +  alpha * df[f'{b2}_{w}_sum_ws']/(df[f'{b2}_{w}_sum_w']+1e-10)) / (1 + alpha) - df['threshold']
                 feature_cols.append(new_col_name_alt)
 
+b1 = 'bba'
+w = 0
+new_col_name = f'BWT_{b1}_{w}'
+new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
+feature_cols.append(new_col_name)
+b1 = 'bab'
+w = 0
+new_col_name = f'BWT_{b1}_{w}'
+new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
+feature_cols.append(new_col_name)
+for b1 in ['bba', 'bab']:
+    for w in [-5, 0, 5]:
+        new_col_name = f'BWT_{b1}_{w}'
+        new_cols_dict[new_col_name] = (df[f'{b1}_{w}_sum_ws'] +  alpha * df[f'bab_{w}_sum_ws']) / (df[f'{b1}_{w}_sum_w'] + alpha * df[f'bab_{w}_sum_w']) - df['threshold']
+        feature_cols.append(new_col_name)
 
 # 一次性追加所有新列到 DataFrame
 if new_cols_dict:
@@ -250,7 +263,7 @@ for col in feature_cols:
             return np.nan
         x = group.loc[valid_idx, col]
         y = group.loc[valid_idx, label_name]
-        return stats.spearmanr(x, y)[0]
+        return stats.pearsonr(x, y)[0]
     daily_ic = df.groupby('date').apply(calc_daily_ic)
     daily_ic = pd.to_numeric(daily_ic, errors='coerce')
     # daily_ae = df.groupby('date').apply(lambda g: mean_squared_error(g[label_name], g[col], squared=False))
@@ -285,7 +298,7 @@ for i, factor_name in enumerate(ic_ir_list_single):
             return np.nan
         x = group.loc[valid_idx, factor_name]
         y = group.loc[valid_idx, label_name]
-        return stats.spearmanr(x, y)[0]
+        return stats.pearsonr(x, y)[0]
 
     # 计算每日 IC
     daily_ic = df.groupby('date').apply(calc_daily_ic)
@@ -310,6 +323,9 @@ ic_values = res_ic_ir_single[:, 0]
 top_10_features = sorted(zip(ic_ir_list_single, ic_values), key=lambda x: x[1], reverse=True)[:10]
 top_10_feature_names = [name for name, _ in top_10_features]
 top_10_ic_values = [ic for _, ic in top_10_features]
+top_all_features = sorted(zip(ic_ir_list_single, ic_values), key=lambda x: x[1], reverse=True)
+top_all_feature_names = [name for name, _ in top_all_features]
+top_all_ic_values = [ic for _, ic in top_all_features]
 print("Top 10 features by IC:")
 for name, ic in top_10_features:
     print(f"{name}: IC={ic:.8f}")
@@ -390,7 +406,7 @@ axes[0, 1].grid(True); axes[0, 1].legend()
 # axes[1, 0].set_ylabel('AE')
 # axes[1, 0].set_title('10 Features w. smallest AE')
 # axes[1, 0].grid(True); axes[1, 0].legend()
-# ab_dif plot
+# AD plot
 axes[1,1].bar(top_10_ab_dif_feature_names, top_10_ab_dif_values, color='cyan', label='Top 10 AD')
 # axes[1,1].bar(bottom_10_ab_dif_feature_names, bottom_10_ab_dif_values, color='magenta', label='Bottom 10 AD')
 axes[1,1].set_xticklabels(top_10_ab_dif_feature_names, rotation=90)
@@ -401,7 +417,8 @@ axes[1,1].grid(True); axes[1,1].legend()
 plt.tight_layout()
 os.makedirs('output', exist_ok=True)
 plt.savefig(f'output/res_ic_ir_diff_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', bbox_inches='tight')
-
+plt.close(fig)
+print(f"✓ Saved combined IC/IR/AD plot → res_ic_ir_diff_*.png")
 # =============================================================================
 # 📊 独立绘制并保存三个图表：IC / IR / Absolute Difference
 # =============================================================================
@@ -473,70 +490,6 @@ plt.tight_layout()
 plt.savefig(f'output/ae_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ad)
 print(f"✓ Saved AE plot → ae_ranking_*.png")
-# # 严格过滤 NaN 保证 x/y 长度一致
-# valid_mask = [pd.notna(x[0]) for x in res_ic_ir_single]
-# valid_weights = [w for w, v in zip(plot_weights, valid_mask) if v]
-# ic_values = [x[0] for x in res_ic_ir_single if pd.notna(x[0])]
-# ir_values = [x[1] for x in res_ic_ir_single if pd.notna(x[1])]
-
-# fig, axes = plt.subplots(1, 4, figsize=(24, 6))
-# # plt.figure(figsize=(12, 10))
-# # plt.subplot(2, 1, 1)
-# if len(ic_ir_list_single) > 0:
-#     axes[0].scatter(range(len(ic_ir_list_single)), ic_values, label='IC: Weighted Basis Mid')
-#     # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IC 值
-# axes[0].set_xticks(range(len(ic_ir_list_single)))
-# axes[0].set_xticklabels([ic_ir_list_single[j] for j in range(len(ic_ir_list_single))], rotation=90)
-# axes[0].set_xlabel('Features')
-# axes[0].set_ylabel('IC')
-# axes[0].set_title('Daily Cross-Sectional IC')
-# axes[0].grid(True); axes[0].legend()
-
-# # plt.subplot(2, 1, 2)
-# if len(ic_ir_list_single) > 0:
-#     axes[1].scatter(range(len(ic_ir_list_single)), ir_values, label='IR: Weighted Basis Mid', color='orange')
-#     # plt.xscale('symlog')  # 使用对称 log 坐标轴以更好地展示正负权重的 IR 值
-# axes[1].set_xticks(range(len(ic_ir_list_single)))
-# axes[1].set_xticklabels([ic_ir_list_single[j] for j in range(len(ic_ir_list_single))], rotation=90)
-# axes[1].set_xlabel('Features')
-# axes[1].set_ylabel('IR')
-# axes[1].set_title('Information Ratio (IR)')
-# axes[1].grid(True); axes[1].legend()
-
-# # Plot heatmap for dual mixture IC values
-# if len(ic_ir_list_dual) > 0:
-#     # print(res_ic_ir_dual[:, :, 0])
-#     max_ic_dual = np.nanmax(res_ic_ir_dual[:, :, 0])
-#     min_ic_dual = np.nanmin(res_ic_ir_dual[:, :, 0])
-#     axes[2].imshow(res_ic_ir_dual[:, :, 0], aspect='auto', cmap='viridis', vmin=min_ic_dual, vmax=max_ic_dual)
-#     # axes[2].colorbar()
-#     axes[2].set_xticks(range(res_ic_ir_dual.shape[1]))
-#     axes[2].set_xticklabels(['alpha=0.5', 'alpha=0.75', 'alpha=1.0'], rotation=90)
-#     axes[2].set_yticks(range(res_ic_ir_dual.shape[0]))
-#     axes[2].set_yticklabels([ic_ir_list_single[j].split('BWT_')[-1] for j in range(len(ic_ir_list_single))])
-#     axes[2].set_xlabel('Alpha')
-#     axes[2].set_ylabel('Weight')
-#     axes[2].set_title('Daily Cross-Sectional IC for Dual Mixture')
-
-# if len(ic_ir_list_dual) > 0:
-#     max_ir_dual = np.nanmax(res_ic_ir_dual[:, :, 1])
-#     min_ir_dual = np.nanmin(res_ic_ir_dual[:, :, 1])
-#     axes[3].imshow(res_ic_ir_dual[:, :, 1], aspect='auto', cmap='viridis', vmin=min_ir_dual, vmax=max_ir_dual)
-#     # axes[3].colorbar()
-#     axes[3].set_xticks(range(res_ic_ir_dual.shape[1]))
-#     axes[3].set_xticklabels(['alpha=0.5', 'alpha=0.75', 'alpha=1.0'], rotation=90)
-#     axes[3].set_yticks(range(res_ic_ir_dual.shape[0]))
-#     axes[3].set_yticklabels([ic_ir_list_single[j].split('BWT_')[-1] for j in range(len(ic_ir_list_single))])
-#     axes[3].set_xlabel('Alpha')
-#     axes[3].set_ylabel('Weight')
-#     axes[3].set_title('Information Ratio (IR) for Dual Mixture')
-
-# fig.colorbar(plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min_ic_dual, vmax=max_ic_dual)), ax=axes[2], orientation='vertical', label='IC Value')
-# fig.colorbar(plt.cm.ScalarMappable(cmap='viridis', norm=plt.Normalize(vmin=min_ir_dual, vmax=max_ir_dual)), ax=axes[3], orientation='vertical', label='IR Value')
-# plt.tight_layout()
-# os.makedirs('output', exist_ok=True)
-# plt.savefig(f'output/ic_ir_{symbol}_{label_name}_nMod{len(models)}delay{delay_precentile}{operation}_nml{normalize_X}_mode{mode}.png', bbox_inches='tight')
-# plt.show()
 
 df['const.'] = 1.0
 feature_cols = selected_feature_cols + [f'BWT_{w}' for w in weights]
@@ -544,11 +497,117 @@ feature_cols.append('const.')
 
 print(f"Selected {len(feature_cols)} features")
 
-# Visualize correlation
-label_names = ['gain_vs_threshold']
-df_corr = df[feature_cols + label_names]#.corr()
-corr_matrix = df_corr.corr()
+# -----------------------------------------------------------------------------
+# 4 Full IC Plot: All Features by Information Coefficient
+# -----------------------------------------------------------------------------
+fig_ic, ax_ic = plt.subplots(figsize=(14, 8))
+all_ic_names = top_all_feature_names
+n_top = len(top_all_feature_names)
 
+# ✅ 核心修复：分开绘制，避免 label 数量不匹配报错
+ax_ic.bar(range(n_top), top_all_ic_values, color='green', label='Sorted IC')
+
+    # ax_ic.set_xticks(range(len(all_ic_names)))
+    # ax_ic.set_xticklabels(all_ic_names, rotation=90, ha='right', fontsize=9)
+ax_ic.set_xlabel('Features', fontsize=11)
+ax_ic.set_ylabel('Information Coefficient (IC)', fontsize=11)
+ax_ic.set_title(f'Sorted Features by IC | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
+ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
+ax_ic.legend(loc='upper right')
+plt.tight_layout()
+plt.savefig(f'output/ic_ranking_all_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_ic)
+print(f"✓ Saved All IC plot → ic_ranking_all_*.png")
+
+
+fig_scatt, axes_scatt = plt.subplots(3,2, figsize=(18, 16), sharex=True)
+
+all_ic_names = top_10_feature_names + bottom_10_feature_names
+# top1_feature_names = top_10_feature_names[0]
+# bottom_1_feature_name = bottom_10_feature_names[0]
+# valid_idx = df[[top_10_feature_names[:3], bottom_10_feature_names[:3], label_name]].dropna().index
+valid_idx = df[
+    top_10_feature_names[:3] + bottom_10_feature_names[:3] + [label_name]
+].dropna().index
+if len(valid_idx) < 3:  # 样本过少时 spearmanr 无统计意义
+    print('No enough data for scatter plots')
+for i in range(3):
+    axes_scatt[i, 0].set_title(f'Top {i+1} | Symbol: {symbol} | Mode: {mode}| {operation} |IC = {res_ic_ir_single[ic_ir_list_single.index(top_10_feature_names[i]), 0]:.4f}', fontsize=13, fontweight='bold')
+    axes_scatt[i, 1].set_title(f'Bottom {i+1} | Symbol: {symbol} | Mode: {mode}| {operation} |IC = {res_ic_ir_single[ic_ir_list_single.index(bottom_10_feature_names[i]), 0]:.4f}', fontsize=13, fontweight='bold')
+    axes_scatt[i, 0].set_xlabel(f'Feature Value ({top_10_feature_names[i]})', fontsize=11)
+    axes_scatt[i, 0].set_ylabel(f'Label Value ({label_name})', fontsize=11)
+    axes_scatt[i, 1].set_xlabel(f'Feature Value ({bottom_10_feature_names[i]})', fontsize=11)
+    axes_scatt[i, 1].set_ylabel(f'Label Value ({label_name})', fontsize=11)
+    x1 = df.loc[valid_idx, top_10_feature_names[i]]
+    x2 = df.loc[valid_idx, bottom_10_feature_names[i]]
+    y = df.loc[valid_idx, label_name]
+    axes_scatt[i, 0].scatter(x1, y, alpha=0.5, label=f'Top {i+1} vs y')
+    axes_scatt[i, 0].grid(True)
+    axes_scatt[i, 0].legend()
+    axes_scatt[i, 1].scatter(x2, y, alpha=0.5, label=f'Bottom {i+1} vs y')
+    axes_scatt[i, 1].grid(True)
+    axes_scatt[i, 1].legend()
+# axes_scatt[0].scatter(x1, y, alpha=0.5, label='Top 1 vs y')
+# axes_scatt[0].set_xlabel('Feature Value (Top 1)')
+# axes_scatt[0].set_ylabel('Label value')
+# axes_scatt[0].set_title(f'Top 1 vs Label ({top_10_feature_names[0]}, {label_name}| {operation}| {mode}|IC ={res_ic_ir_single[ic_ir_list_single.index(top_10_feature_names[0]), 0]:.4f})')
+# axes_scatt[0].grid(True)
+# axes_scatt[0].legend()
+# axes_scatt[1].scatter(x2, y, alpha=0.5, label='Bottom 1 vs y')
+# axes_scatt[1].set_xlabel('Feature Value (Bottom 1)')
+# axes_scatt[1].set_ylabel('Label value')
+# axes_scatt[1].set_title(f'Bott. 1  vs Label ({bottom_10_feature_names[0]}, {label_name}| {operation}| {mode}|IC ={res_ic_ir_single[ic_ir_list_single.index(bottom_10_feature_names[0]), 0]:.4f})')
+# axes_scatt[1].grid(True)
+# axes_scatt[1].legend()
+# axes_scatt[2].scatter(x1, x2, alpha=0.5, label='Top 1 vs Bottom 1')
+# axes_scatt[2].set_xlabel('Feature Value (Top 1)')
+# axes_scatt[2].set_ylabel('Feature Value (Bottom 1)')
+# axes_scatt[2].set_title(f'Top 1 vs Bott. 1 ({top1_feature_name}, {bottom_1_feature_name}| {operation}| {mode})')
+# axes_scatt[2].grid(True)
+# axes_scatt[2].legend()
+
+plt.tight_layout()
+plt.savefig(f'output/scatter_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_scatt)
+# plt.show()
+
+
+fig_scatt2, axes_scatt2 = plt.subplots(4,3, figsize=(18, 16), sharex=True)
+
+feature_names_origin = ['BWT_baa', 'BWT_bab', 'BWT_bba', 'BWT_bbb']
+valid_idx = df[['BWT_baa_0', 'BWT_bab_0', 'BWT_bba_0', 'BWT_bbb_0', label_name]].dropna().index
+if len(valid_idx) < 3:  # 样本过少时 spearmanr 无统计意义
+    print('No enough data for scatter plots')
+for i, feature_name in enumerate(feature_names_origin):
+    x1 = df.loc[valid_idx, f"{feature_name}_-5"]
+    x2 = df.loc[valid_idx, f"{feature_name}_0"]
+    x3 = df.loc[valid_idx, f"{feature_name}_5"]
+    y = df.loc[valid_idx, label_name]
+    axes_scatt2[i, 0].scatter(x1, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 0].set_xlabel(f'Feature Value ({feature_name}_-5)')
+    axes_scatt2[i, 0].set_ylabel('Label value')
+    axes_scatt2[i, 0].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 0].grid(True)
+    axes_scatt2[i, 0].legend()
+
+    axes_scatt2[i, 1].scatter(x2, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 1].set_xlabel(f'Feature Value ({feature_name}_0)')
+    axes_scatt2[i, 1].set_ylabel('Label value')
+    axes_scatt2[i, 1].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 1].grid(True)
+    axes_scatt2[i, 1].legend()
+
+    axes_scatt2[i, 2].scatter(x3, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 2].set_xlabel(f'Feature Value ({feature_name}_5)')
+    axes_scatt2[i, 2].set_ylabel('Label value')
+    axes_scatt2[i, 2].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 2].grid(True)
+    axes_scatt2[i, 2].legend()
+
+plt.tight_layout()
+plt.savefig(f'output/scatter2_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_scatt2)
 
 # Prepare data for modeling
 df_sample = df.copy()

@@ -60,8 +60,8 @@ def get_weighted_stats(series, N_weights = 6):
         # mix_mean(x_i, z_i) = (a_i * alpha * a_i(z_i)) / (b_i + alpha * b_i(z_i))
         if abs(w) >= 1:
             # clip(bx, -500, 500)
-            # scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
-            scaled = np.clip(s * (10**abs(abs(w)-1)) * series, -500, 500)
+            scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+            # scaled = np.clip(10**(s * abs(abs(w)-1)) * series, -500, 500)
         elif w == 0:
             scaled = np.clip(series, -500, 500)
         exp_vals = np.exp(scaled)
@@ -70,7 +70,8 @@ def get_weighted_stats(series, N_weights = 6):
             wght = np.zeros_like(series)
         else:
             wght = exp_vals / denom
-        weighted_series = series * wght
+        # weighted_series = series * wght
+        weighted_series = series * exp_vals
         # m = np.sum(weighted_series) / (np.sum(wght) + 1e-10)  # 安全除法
         results[f'{key_suffix}'] = (np.sum(weighted_series), denom)  # 返回加权均值和加权标准差
     return results
