@@ -31,10 +31,10 @@ TOLERENCE = 1e-12
 # mode = 2
 delay_exec = ''
 normalize_X = 0
-# mode, operation = 2, 'close2'
+mode, operation = 2, 'close2'
 # mode, operation = 2, 'open2'
 # mode, operation = 0, 'close2'
-mode, operation = 0, 'open2'
+# mode, operation = 0, 'open2'
 delay_precentile = 95
 beta = 1
 symbol = 'all'
@@ -191,20 +191,20 @@ for b1 in basis_cols:
                 new_cols_dict[new_col_name_alt] = (df[f'{b1}_{w}_sum_ws']/(df[f'{b1}_{w}_sum_w']+1e-10)  +  alpha * df[f'{b2}_{w}_sum_ws']/(df[f'{b2}_{w}_sum_w']+1e-10)) / (1 + alpha) - df['threshold']
                 feature_cols.append(new_col_name_alt)
 
-b1 = 'bba'
-w = 0
-new_col_name = f'BWT_{b1}_{w}'
-new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
-feature_cols.append(new_col_name)
-b1 = 'bab'
-w = 0
-new_col_name = f'BWT_{b1}_{w}'
-new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
-feature_cols.append(new_col_name)
+# b1 = 'bba'
+# w = 0
+# new_col_name = f'BWT_{b1}_{w}'
+# new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
+# feature_cols.append(new_col_name)
+# b1 = 'bab'
+# w = 0
+# new_col_name = f'BWT_{b1}_{w}'
+# new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
+# feature_cols.append(new_col_name)
 for b1 in ['bba', 'bab']:
     for w in [-5, 0, 5]:
         new_col_name = f'BWT_{b1}_{w}'
-        new_cols_dict[new_col_name] = (df[f'{b1}_{w}_sum_ws'] +  alpha * df[f'bab_{w}_sum_ws']) / (df[f'{b1}_{w}_sum_w'] + alpha * df[f'bab_{w}_sum_w']) - df['threshold']
+        new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
         feature_cols.append(new_col_name)
 
 # 一次性追加所有新列到 DataFrame
