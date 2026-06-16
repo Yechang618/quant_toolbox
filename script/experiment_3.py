@@ -31,11 +31,12 @@ TOLERENCE = 1e-12
 # mode = 2
 delay_exec = ''
 normalize_X = 0
-# mode, operation = 2, 'close2'
+mode, operation = 2, 'close2'
 # mode, operation = 2, 'open2'
-mode, operation = 0, 'close2'
+# mode, operation = 0, 'close2'
 # mode, operation = 0, 'open2'
 delay_precentile = 95
+filter_range = 0.05
 beta = 1
 symbol = 'all'
 # symbol = 'ZENUSDT'
@@ -44,7 +45,7 @@ symbol = 'all'
 label_name = 'gain_vs_threshold' 
 
 # Define the folder path
-folder_path = f'data/factors_output/mode{mode}/'
+folder_path = f'data/factors_output_2/mode{mode}/'
 
 
 # Get all CSV files in the folder
@@ -129,10 +130,10 @@ print(f"{delay_precentile}th percentile of execute_delay_ms: {upper_limit_delay}
 filtered_df = combined_df[combined_df['execute_delay_ms'] <= upper_limit_delay]
 
 # Filter out outliers based on the 10th and 90th percentiles of gain_vs_threshold
-lower_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.05)
-upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(0.95)
-print(f"5th percentile of gain_vs_threshold: {lower_limit_gain}")
-print(f"95th percentile of gain_vs_threshold: {upper_limit_gain}")
+lower_limit_gain = filtered_df['gain_vs_threshold'].quantile(filter_range)
+upper_limit_gain = filtered_df['gain_vs_threshold'].quantile(1 - filter_range)
+print(f"{filter_range*100}th percentile of gain_vs_threshold: {lower_limit_gain}")
+print(f"{(1-filter_range)*100}th percentile of gain_vs_threshold: {upper_limit_gain}")
 filtered_df = filtered_df[(filtered_df['gain_vs_threshold'] >= lower_limit_gain) & (filtered_df['gain_vs_threshold'] <= upper_limit_gain)]
 filtered_df = filtered_df[(filtered_df['operation'] == operation)]
 if symbol != 'all':
@@ -202,7 +203,7 @@ for b1 in basis_cols:
 # new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
 # feature_cols.append(new_col_name)
 for b1 in ['bba', 'bab']:
-    for w in [-5, 0, 5]:
+    for w in range(-N_weights, N_weights+1):
         new_col_name = f'BWT_{b1}_{w}'
         new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
         feature_cols.append(new_col_name)
@@ -416,7 +417,7 @@ axes[1,1].set_title('10 Features w. smallest Absolute Difference')
 axes[1,1].grid(True); axes[1,1].legend()
 plt.tight_layout()
 os.makedirs('output', exist_ok=True)
-plt.savefig(f'output/res_ic_ir_diff_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', bbox_inches='tight')
+plt.savefig(f'output/res_ic_ir_diff_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', bbox_inches='tight')
 plt.close(fig)
 print(f"✓ Saved combined IC/IR/AD plot → res_ic_ir_diff_*.png")
 # =============================================================================
@@ -445,7 +446,7 @@ ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ic.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ic_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ic_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ic)
 print(f"✓ Saved IC plot → ic_ranking_*.png")
 
@@ -469,7 +470,7 @@ ax_ir.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ir.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ir.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ir_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ir_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ir)
 print(f"✓ Saved IR plot → ir_ranking_*.png")
 
@@ -487,7 +488,7 @@ ax_ad.set_title(f'10 Features with Smallest Prediction Error | Symbol: {symbol} 
 ax_ad.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ad.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ae_ranking_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ae_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ad)
 print(f"✓ Saved AE plot → ae_ranking_*.png")
 
@@ -516,7 +517,7 @@ ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ic.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ic_ranking_all_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ic_ranking_all_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ic)
 print(f"✓ Saved All IC plot → ic_ranking_all_*.png")
 
@@ -568,89 +569,166 @@ for i in range(3):
 # axes_scatt[2].legend()
 
 plt.tight_layout()
-plt.savefig(f'output/scatter_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/scatter_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_scatt)
 # plt.show()
 
 
-fig_scatt2, axes_scatt2 = plt.subplots(4,3, figsize=(18, 16), sharex=True)
+fig_scatt2, axes_scatt2 = plt.subplots(4,5, figsize=(18, 16), sharex=True)
 
 feature_names_origin = ['BWT_baa', 'BWT_bab', 'BWT_bba', 'BWT_bbb']
 valid_idx = df[['BWT_baa_0', 'BWT_bab_0', 'BWT_bba_0', 'BWT_bbb_0', label_name]].dropna().index
 if len(valid_idx) < 3:  # 样本过少时 spearmanr 无统计意义
     print('No enough data for scatter plots')
 for i, feature_name in enumerate(feature_names_origin):
-    x1 = df.loc[valid_idx, f"{feature_name}_-5"]
-    x2 = df.loc[valid_idx, f"{feature_name}_0"]
-    x3 = df.loc[valid_idx, f"{feature_name}_5"]
+    x1 = df.loc[valid_idx, f"{feature_name}_-8"]
+    # x2 = df.loc[valid_idx, f"{feature_name}_-5"]
+    x3 = df.loc[valid_idx, f"{feature_name}_-3"]
+    x4 = df.loc[valid_idx, f"{feature_name}_0"]
+    x5 = df.loc[valid_idx, f"{feature_name}_3"]
+    # x6 = df.loc[valid_idx, f"{feature_name}_5"]
+    x7 = df.loc[valid_idx, f"{feature_name}_8"]
     y = df.loc[valid_idx, label_name]
     axes_scatt2[i, 0].scatter(x1, y, alpha=0.5, label=f'{feature_name} vs y')
-    axes_scatt2[i, 0].set_xlabel(f'Feature Value ({feature_name}_-5)')
+    axes_scatt2[i, 0].set_xlabel(f'{feature_name}_-8')
     axes_scatt2[i, 0].set_ylabel('Label value')
-    axes_scatt2[i, 0].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 0].set_title(f' {operation}| {mode}')
     axes_scatt2[i, 0].grid(True)
     axes_scatt2[i, 0].legend()
 
-    axes_scatt2[i, 1].scatter(x2, y, alpha=0.5, label=f'{feature_name} vs y')
-    axes_scatt2[i, 1].set_xlabel(f'Feature Value ({feature_name}_0)')
+    axes_scatt2[i, 1].scatter(x3, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 1].set_xlabel(f'{feature_name}_-3')
     axes_scatt2[i, 1].set_ylabel('Label value')
-    axes_scatt2[i, 1].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 1].set_title(f'{operation}| {mode}')
     axes_scatt2[i, 1].grid(True)
     axes_scatt2[i, 1].legend()
 
-    axes_scatt2[i, 2].scatter(x3, y, alpha=0.5, label=f'{feature_name} vs y')
-    axes_scatt2[i, 2].set_xlabel(f'Feature Value ({feature_name}_5)')
+    axes_scatt2[i, 2].scatter(x4, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 2].set_xlabel(f'{feature_name}_0')
     axes_scatt2[i, 2].set_ylabel('Label value')
-    axes_scatt2[i, 2].set_title(f'{feature_name} vs Label ({feature_name}, {label_name}| {operation}| {mode})')
+    axes_scatt2[i, 2].set_title(f' {operation}| {mode}')
     axes_scatt2[i, 2].grid(True)
     axes_scatt2[i, 2].legend()
 
+    axes_scatt2[i, 3].scatter(x5, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 3].set_xlabel(f'{feature_name}_3')
+    axes_scatt2[i, 3].set_ylabel('Label value')
+    axes_scatt2[i, 3].set_title(f' {operation}| {mode}')
+    axes_scatt2[i, 3].grid(True)
+    axes_scatt2[i, 3].legend()
+
+    axes_scatt2[i, 4].scatter(x7, y, alpha=0.5, label=f'{feature_name} vs y')
+    axes_scatt2[i, 4].set_xlabel(f'{feature_name}_8')
+    axes_scatt2[i, 4].set_ylabel('Label value')
+    axes_scatt2[i, 4].set_title(f'{operation}| {mode}')
+    axes_scatt2[i, 4].grid(True)
+    axes_scatt2[i, 4].legend()
+
 plt.tight_layout()
-plt.savefig(f'output/scatter2_{symbol}_{label_name}_delay{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/scatter2_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_scatt2)
 
-# Prepare data for modeling
-df_sample = df.copy()
-X = df_sample[feature_cols].values
-print(f"Feature matrix shape: {X.shape}")
-print(df_sample[feature_cols].info())
+fig_scatt3, axes_scatt3 = plt.subplots(3,3, figsize=(18, 16), sharex=True)
+plot_indices = [-7, -5, -3, -1, 0, 1, 3, 5, 7]
+feature_names_origin = ['BWT_baa', 'BWT_bab', 'BWT_bba', 'BWT_bbb']
+valid_idx = df[['BWT_baa_0', 'BWT_bab_0', 'BWT_bba_0', 'BWT_bbb_0', label_name]].dropna().index
+if len(valid_idx) < 3:  # 样本过少时 spearmanr 无统计意义
+    print('No enough data for scatter plots')
+for i, index in enumerate(plot_indices):
+    x1 = df.loc[valid_idx, f"BWT_baa_{index}"]
+    x2 = df.loc[valid_idx, f"BWT_bab_{index}"]
+    x3 = df.loc[valid_idx, f"BWT_bba_{index}"]
+    x4 = df.loc[valid_idx, f"BWT_bbb_{index}"]
 
-# Generate labels based on the selected label column
-Y = df_sample[[label_name, 'gain_vs_threshold']].values
-# y = np.squeeze(y)  # Convert to 1D array if it's a single column# Fix: Remove redundant train_test_split and use consistent test_size
-test_size = 0.2  # Changed from 0.1 to 0.2 for better evaluation
-# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42) # Removed redundant line
-X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
-Y_train, Y_test = Y[:int(len(Y) * (1 - test_size))], Y[int(len(Y) * (1 - test_size)):]
+    y = df.loc[valid_idx, label_name]
+    ix = i // 3
+    iy = i % 3
 
-print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-print(f"X_train shape: {X_train.shape}, Y_train shape: {Y_train.shape}")
+    axes_scatt3[ix, iy].scatter(x2, y, alpha=0.3, label = f"Ask - Bid", color='green')
+    axes_scatt3[ix, iy].scatter(x4, y, alpha=0.3, label = f"Bid - Bid", color='orange')
+    axes_scatt3[ix, iy].scatter(x1, y, alpha=0.3 ,label = f"Ask - Ask", color='blue')
+    axes_scatt3[ix, iy].scatter(x3, y, alpha=0.3, label = f"Bid - Ask", color='red')
 
-# x_thres = X_test[:, feature_cols.index('threshold')]
-x_thres = X_test[:, feature_cols.index('const.')]
-# Normalize features and labels
-if normalize_X == 1:
-    X_train_mean = X_train.mean(axis=0)
-    X_train_std = X_train.std(axis=0)
-    Y_train_mean = Y_train.mean(axis=0)
-    Y_train_std = Y_train.std(axis=0)
-    y_train_mean = Y_train[:, 0].mean()
-    y_train_std = Y_train[:, 0].std()
-else:
-    X_train_mean = np.zeros(X_train.shape[1])
-    X_train_std = np.ones(X_train.shape[1])
-    Y_train_mean = np.zeros(Y_train.shape[1])
-    Y_train_std = np.ones(Y_train.shape[1])
-    y_train_mean = 0
-    y_train_std = 1
+    axes_scatt3[ix, iy].set_xlabel(f'Feature Value (w = {index})')
+    axes_scatt3[ix, iy].set_ylabel('Label value')
+    axes_scatt3[ix, iy].set_title(f'({operation}| {mode})')
+    axes_scatt3[ix, iy].grid(True)
+    axes_scatt3[ix, iy].legend()
 
-X_train = (X_train - X_train_mean) / (X_train_std + TOLERENCE)
-Y_train = (Y_train - Y_train_mean) / (Y_train_std + TOLERENCE)
-X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
-# Note: Y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
-y_test = Y_test[:, 0]  # Assuming the first column is the main label for evaluation
-y_train = Y_train[:, 0]  # Assuming the first column is the main label
-label_test = Y_test[:, 1]  # gain_vs_threshold for label prediction plot
-label_train = Y_train[:, 1]  # gain_vs_threshold for label prediction plot
+plt.tight_layout()
+plt.savefig(f'output/scatter3_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_scatt3)
+
+## Compute residuals for top 1 feature
+top_feature = top_10_ab_dif_features[0][0]
+# print(df.columns)
+valid_idx = df[[top_feature, label_name]].dropna().index
+x = df.loc[valid_idx, top_feature]
+y = df.loc[valid_idx, label_name]
+# Plot histogram of residuals and y
+if operation == 'close2':
+    residuals = y + x
+else:    
+    residuals = y - x
+fig_res, axes_res = plt.subplots(1, 2, figsize=(14, 6))
+axes_res[0].hist(residuals, bins=30, color='purple', edgecolor='black', alpha=0.7)
+axes_res[0].set_title(f'Residuals of {top_feature} | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+axes_res[0].set_xlabel('Residual Value')
+axes_res[0].set_ylabel('Frequency')     
+axes_res[0].grid(True, linestyle=':', alpha=0.7)
+axes_res[1].hist(y, bins=30, color='teal', edgecolor='black', alpha=0.7)
+axes_res[1].set_title(f'{label_name} | Symbol: {symbol} | Mode: {mode}| {operation}', fontsize=13, fontweight='bold')
+axes_res[1].set_xlabel(f'{label_name} Value')
+axes_res[1].set_ylabel('Frequency')
+axes_res[1].grid(True, linestyle=':', alpha=0.7)
+plt.tight_layout()
+plt.savefig(f'output/residuals_{symbol}_{label_name}_{filter_range}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.close(fig_res)
+
+print(f"Finished IC/IR/AD analysis and plotting for {symbol} | Label: {label_name} | Mode: {mode} | Operation: {operation}")
+
+# # Prepare data for modeling
+# df_sample = df.copy()
+# X = df_sample[feature_cols].values
+# print(f"Feature matrix shape: {X.shape}")
+# print(df_sample[feature_cols].info())
+
+# # Generate labels based on the selected label column
+# Y = df_sample[[label_name, 'gain_vs_threshold']].values
+# # y = np.squeeze(y)  # Convert to 1D array if it's a single column# Fix: Remove redundant train_test_split and use consistent test_size
+# test_size = 0.2  # Changed from 0.1 to 0.2 for better evaluation
+# # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42) # Removed redundant line
+# X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
+# Y_train, Y_test = Y[:int(len(Y) * (1 - test_size))], Y[int(len(Y) * (1 - test_size)):]
+
+# print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
+# print(f"X_train shape: {X_train.shape}, Y_train shape: {Y_train.shape}")
+
+# # x_thres = X_test[:, feature_cols.index('threshold')]
+# x_thres = X_test[:, feature_cols.index('const.')]
+# # Normalize features and labels
+# if normalize_X == 1:
+#     X_train_mean = X_train.mean(axis=0)
+#     X_train_std = X_train.std(axis=0)
+#     Y_train_mean = Y_train.mean(axis=0)
+#     Y_train_std = Y_train.std(axis=0)
+#     y_train_mean = Y_train[:, 0].mean()
+#     y_train_std = Y_train[:, 0].std()
+# else:
+#     X_train_mean = np.zeros(X_train.shape[1])
+#     X_train_std = np.ones(X_train.shape[1])
+#     Y_train_mean = np.zeros(Y_train.shape[1])
+#     Y_train_std = np.ones(Y_train.shape[1])
+#     y_train_mean = 0
+#     y_train_std = 1
+
+# X_train = (X_train - X_train_mean) / (X_train_std + TOLERENCE)
+# Y_train = (Y_train - Y_train_mean) / (Y_train_std + TOLERENCE)
+# X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
+# # Note: Y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
+# y_test = Y_test[:, 0]  # Assuming the first column is the main label for evaluation
+# y_train = Y_train[:, 0]  # Assuming the first column is the main label
+# label_test = Y_test[:, 1]  # gain_vs_threshold for label prediction plot
+# label_train = Y_train[:, 1]  # gain_vs_threshold for label prediction plot
 
 

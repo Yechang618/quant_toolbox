@@ -60,10 +60,12 @@ def get_weighted_stats(series, N_weights = 6):
         # mix_mean(x_i, z_i) = (a_i * alpha * a_i(z_i)) / (b_i + alpha * b_i(z_i))
         if abs(w) >= 1:
             # clip(bx, -500, 500)
-            scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+            # scaled = np.clip(s * (10**abs(w-1)) * series, -500, 500)
+            scaled = np.clip(s * (10**(abs(w)-1)) * series, -500, 500)
             # scaled = np.clip(10**(s * abs(abs(w)-1)) * series, -500, 500)
         elif w == 0:
-            scaled = np.clip(series, -500, 500)
+            # scaled = np.clip(series, -500, 500)
+            scaled = np.ones_like(series)
         exp_vals = np.exp(scaled)
         denom = np.sum(exp_vals)
         if denom == 0 or np.isnan(denom):

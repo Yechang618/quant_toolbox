@@ -148,6 +148,6 @@ def generate_factors_from_parquet(
 if __name__ == "__main__":
     generate_factors_from_parquet(
         input_dir=Path("data/step1_windows"),
-        output_dir=Path("data/factors_output"),
+        output_dir=Path("data/factors_output_2"),
         debug=True
     )
