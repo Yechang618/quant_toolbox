@@ -29,12 +29,14 @@ models = ['OLS Regression', 'Linear Regression',
 
 TOLERENCE = 1e-12
 # mode = 2
+# ticksize = 'eq_tick'
+ticksize = 'neq_tick'
 delay_exec = ''
 normalize_X = 0
-mode, operation = 2, 'close2'
+# mode, operation = 2, 'close2'
 # mode, operation = 2, 'open2'
 # mode, operation = 0, 'close2'
-# mode, operation = 0, 'open2'
+mode, operation = 0, 'open2'
 delay_precentile = 95
 filter_range = 0.05
 beta = 1
@@ -45,7 +47,7 @@ symbol = 'all'
 label_name = 'gain_vs_threshold' 
 
 # Define the folder path
-folder_path = f'data/factors_output_2/mode{mode}/'
+folder_path = f'data/factors_output_{ticksize}/mode{mode}/'
 
 
 # Get all CSV files in the folder
@@ -446,7 +448,7 @@ ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ic.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ic_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ic_ranking_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ic)
 print(f"✓ Saved IC plot → ic_ranking_*.png")
 
@@ -470,7 +472,7 @@ ax_ir.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ir.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ir.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ir_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ir_ranking_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ir)
 print(f"✓ Saved IR plot → ir_ranking_*.png")
 
@@ -488,7 +490,7 @@ ax_ad.set_title(f'10 Features with Smallest Prediction Error | Symbol: {symbol} 
 ax_ad.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ad.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ae_ranking_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ae_ranking_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ad)
 print(f"✓ Saved AE plot → ae_ranking_*.png")
 
@@ -517,7 +519,7 @@ ax_ic.axhline(y=0, color='gray', linestyle='--', linewidth=0.5, alpha=0.5)
 ax_ic.grid(True, axis='y', linestyle=':', alpha=0.7)
 ax_ic.legend(loc='upper right')
 plt.tight_layout()
-plt.savefig(f'output/ic_ranking_all_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/ic_ranking_all_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_ic)
 print(f"✓ Saved All IC plot → ic_ranking_all_*.png")
 
@@ -569,7 +571,7 @@ for i in range(3):
 # axes_scatt[2].legend()
 
 plt.tight_layout()
-plt.savefig(f'output/scatter_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/scatter_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_scatt)
 # plt.show()
 
@@ -625,7 +627,7 @@ for i, feature_name in enumerate(feature_names_origin):
     axes_scatt2[i, 4].legend()
 
 plt.tight_layout()
-plt.savefig(f'output/scatter2_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/scatter2_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_scatt2)
 
 fig_scatt3, axes_scatt3 = plt.subplots(3,3, figsize=(18, 16), sharex=True)
@@ -656,7 +658,7 @@ for i, index in enumerate(plot_indices):
     axes_scatt3[ix, iy].legend()
 
 plt.tight_layout()
-plt.savefig(f'output/scatter3_{symbol}_{label_name}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/scatter3_{symbol}_{ticksize}_{filter_range}_{delay_precentile}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_scatt3)
 
 ## Compute residuals for top 1 feature
@@ -682,53 +684,8 @@ axes_res[1].set_xlabel(f'{label_name} Value')
 axes_res[1].set_ylabel('Frequency')
 axes_res[1].grid(True, linestyle=':', alpha=0.7)
 plt.tight_layout()
-plt.savefig(f'output/residuals_{symbol}_{label_name}_{filter_range}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
+plt.savefig(f'output/residuals_{symbol}_{ticksize}_{filter_range}_{operation}_mode{mode}.png', dpi=300, bbox_inches='tight')
 plt.close(fig_res)
 
 print(f"Finished IC/IR/AD analysis and plotting for {symbol} | Label: {label_name} | Mode: {mode} | Operation: {operation}")
-
-# # Prepare data for modeling
-# df_sample = df.copy()
-# X = df_sample[feature_cols].values
-# print(f"Feature matrix shape: {X.shape}")
-# print(df_sample[feature_cols].info())
-
-# # Generate labels based on the selected label column
-# Y = df_sample[[label_name, 'gain_vs_threshold']].values
-# # y = np.squeeze(y)  # Convert to 1D array if it's a single column# Fix: Remove redundant train_test_split and use consistent test_size
-# test_size = 0.2  # Changed from 0.1 to 0.2 for better evaluation
-# # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42) # Removed redundant line
-# X_train, X_test = X[:int(len(X) * (1 - test_size))], X[int(len(X) * (1 - test_size)):]
-# Y_train, Y_test = Y[:int(len(Y) * (1 - test_size))], Y[int(len(Y) * (1 - test_size)):]
-
-# print(f"Training samples: {len(X_train)}, Testing samples: {len(X_test)}")
-# print(f"X_train shape: {X_train.shape}, Y_train shape: {Y_train.shape}")
-
-# # x_thres = X_test[:, feature_cols.index('threshold')]
-# x_thres = X_test[:, feature_cols.index('const.')]
-# # Normalize features and labels
-# if normalize_X == 1:
-#     X_train_mean = X_train.mean(axis=0)
-#     X_train_std = X_train.std(axis=0)
-#     Y_train_mean = Y_train.mean(axis=0)
-#     Y_train_std = Y_train.std(axis=0)
-#     y_train_mean = Y_train[:, 0].mean()
-#     y_train_std = Y_train[:, 0].std()
-# else:
-#     X_train_mean = np.zeros(X_train.shape[1])
-#     X_train_std = np.ones(X_train.shape[1])
-#     Y_train_mean = np.zeros(Y_train.shape[1])
-#     Y_train_std = np.ones(Y_train.shape[1])
-#     y_train_mean = 0
-#     y_train_std = 1
-
-# X_train = (X_train - X_train_mean) / (X_train_std + TOLERENCE)
-# Y_train = (Y_train - Y_train_mean) / (Y_train_std + TOLERENCE)
-# X_test = (X_test - X_train_mean) / (X_train_std + TOLERENCE)
-# # Note: Y_test is kept original for final metric evaluation, but needs normalization for CNN importance scoring
-# y_test = Y_test[:, 0]  # Assuming the first column is the main label for evaluation
-# y_train = Y_train[:, 0]  # Assuming the first column is the main label
-# label_test = Y_test[:, 1]  # gain_vs_threshold for label prediction plot
-# label_train = Y_train[:, 1]  # gain_vs_threshold for label prediction plot
-
 
