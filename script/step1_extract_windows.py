@@ -118,7 +118,7 @@ if __name__ == "__main__":
         trade_file_pattern="combined_*.csv",
         date_start='2026-01-01',
         date_end='2026-01-31',
-        output_dir=Path("data/step1_windows"),
+        output_dir=Path("data_processed/step1_windows"),
         max_symbols=None,               # 🐛 Debug 开关：默认只跑2个币种
         max_records_per_symbol=50,   # 🐛 Debug 开关：每个币种只取50条
         debug = False
