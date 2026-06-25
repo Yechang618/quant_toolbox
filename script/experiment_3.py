@@ -47,7 +47,7 @@ symbol = 'all'
 label_name = 'gain_vs_threshold' 
 
 # Define the folder path
-folder_path = f'data/factors_output_{ticksize}/mode{mode}/'
+folder_path = f'data_processed/factors_output_{ticksize}/mode{mode}/'
 
 
 # Get all CSV files in the folder

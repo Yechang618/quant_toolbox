@@ -281,7 +281,7 @@ def run_optimal_weight_evaluation(
 if __name__ == "__main__":
     eq_ticksize = '_eq_tick'
     run_optimal_weight_evaluation(
-        input_dir=Path(f"data/step1_windows{eq_ticksize}"),
+        input_dir=Path(f"data_processed/step1_windows{eq_ticksize}"),
         output_dir=Path(f"output/weight_evaluation"),
         factor_types=None,  # 使用默认 8 类
         min_window_len=5,
