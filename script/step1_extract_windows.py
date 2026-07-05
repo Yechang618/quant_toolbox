@@ -48,6 +48,8 @@ def extract_and_save_windows(
         logger.info(f"[DEBUG] 限制处理前 {max_symbols} 个 symbols: {unique_symbols}")
 
     logger.info(f"Processing {len(unique_symbols)} symbols across {len(unique_dates)} dates")
+    # Revert unique_symbols
+    unique_symbols = unique_symbols[::-1]
 
     for sym_idx, symbol in enumerate(unique_symbols, 1):
         if symbol in ['DIAUSDT', 'PROMUSDT']:
@@ -120,6 +122,6 @@ if __name__ == "__main__":
         date_end='2026-01-31',
         output_dir=Path("data_processed/step1_windows"),
         max_symbols=None,               # 🐛 Debug 开关：默认只跑2个币种
-        max_records_per_symbol=50,   # 🐛 Debug 开关：每个币种只取50条
+        max_records_per_symbol=150,   # 🐛 Debug 开关：每个币种只取50条
         debug = False
     )
