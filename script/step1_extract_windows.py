@@ -55,6 +55,9 @@ def extract_and_save_windows(
         if symbol in ['DIAUSDT', 'PROMUSDT']:
             logger.info(f"⚠️ Skipping symbol {symbol} due to known data issues")
             continue
+        if symbol in ['SCRUSDT', 'CELOUSDT', 'ALGOUSDT', 'GASUSDT']:
+            logger.info(f"⚠️ Skipping symbol {symbol} due to known data issues")
+            continue
         logger.info(f"[{sym_idx}/{len(unique_symbols)}] Extracting windows for symbol: {symbol}")
         symbol_data = []
 

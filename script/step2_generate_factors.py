@@ -60,6 +60,8 @@ def _sanitize_numeric_df(df: pd.DataFrame) -> pd.DataFrame:
 def generate_factors_from_parquet(
     input_dir: Path = None,
     output_dir: Path = None,
+    output_eq_tick_dir: Path = None,
+    output_neq_tick_dir: Path = None,
     symbols: list = None,
     debug: bool = False
 ):
@@ -68,6 +70,10 @@ def generate_factors_from_parquet(
         input_dir = settings.output_root / "step1_windows"
     if output_dir is None:
         output_dir = settings.output_root
+    if output_eq_tick_dir is None:
+        output_eq_tick_dir = settings.output_root / "step2_factors_eq_tick"
+    if output_neq_tick_dir is None:
+        output_neq_tick_dir = settings.output_root / "step2_factors_neq_tick"
 
     input_dir = Path(input_dir)
     if not input_dir.exists():
@@ -128,6 +134,8 @@ def generate_factors_from_parquet(
                 'threshold': prepared_rec.get('threshold'),
                 'basis_expected': prepared_rec.get('basis_expected'),
                 'basis_executed': prepared_rec.get('basis_executed'),
+                'spot_tick': spot_tick,
+                'swap_tick': swap_tick,
                 **features
             }
             results.append(result)
@@ -139,6 +147,14 @@ def generate_factors_from_parquet(
                 out_path = output_dir / f"mode{int(mode)}" / f"sample_{symbol}.csv"
                 out_path.parent.mkdir(parents=True, exist_ok=True)
                 mode_df.to_csv(out_path, index=False)
+                if spot_tick == swap_tick:
+                    out_path_2 = output_eq_tick_dir / f"mode{int(mode)}" / f"sample_{symbol}.csv"
+                    logger.info(f"✓ Saved {len(mode_df)} examples for {symbol} (mode {mode}, tick {spot_tick}) → {out_path_2}")
+                else:
+                    out_path_2 = output_neq_tick_dir / f"mode{int(mode)}" / f"sample_{symbol}.csv"
+                    logger.info(f"✓ Saved {len(mode_df)} examples for {symbol} (mode {mode}, spot_tick {spot_tick}, swap_tick {swap_tick}) → {out_path}")
+                out_path_2.parent.mkdir(parents=True, exist_ok=True)
+                mode_df.to_csv(out_path_2, index=False)
                 logger.info(f"✓ Saved {len(mode_df)} examples for {symbol} (mode {mode}) → {out_path}")
         else:
             logger.warning(f"No valid results generated for {symbol}")
@@ -149,5 +165,7 @@ if __name__ == "__main__":
     generate_factors_from_parquet(
         input_dir=Path("data_processed/step1_windows"),
         output_dir=Path("data_processed/factors_output_2"),
+        output_eq_tick_dir=Path("data_processed/factors_output_eq_tick"),
+        output_neq_tick_dir=Path("data_processed/factors_output_neq_tick"),
         debug=True
     )
