@@ -1,3 +1,4 @@
+# script/experiment_3.py
 import numpy as np
 import pandas as pd
 import glob
@@ -29,12 +30,12 @@ models = ['OLS Regression', 'Linear Regression',
 
 TOLERENCE = 1e-12
 # mode = 2
-# ticksize = 'eq_tick'
-ticksize = 'neq_tick'
+ticksize = 'eq_tick'
+# ticksize = 'neq_tick'
 delay_exec = ''
 normalize_X = 0
-mode, operation = 2, 'close2'
-# mode, operation = 2, 'open2'
+# mode, operation = 2, 'close2'
+mode, operation = 2, 'open2'
 # mode, operation = 0, 'close2'
 # mode, operation = 0, 'open2'
 delay_precentile = 95
@@ -109,13 +110,6 @@ for col in weighted_feature_cols:
 print(f"Extracted weights: {weights}")
 
 
-# # Sort by exec_ts_utc
-# # combined_df['exec_ts_utc'] = pd.to_datetime(combined_df['exec_ts_utc'])
-# combined_df['exec_ts_utc'] = pd.to_datetime(
-#     combined_df['exec_ts_utc'],
-#     format='ISO8601',
-#     utc=True
-# )
 # 🔧 修复：毫秒时间戳需指定 unit='ms'，移除冗余的重复转换
 combined_df['exec_ts_utc'] = pd.to_datetime(combined_df['exec_ts_utc'], unit='ms', utc=True, errors='coerce')
 combined_df = combined_df.sort_values('exec_ts_utc')
@@ -123,9 +117,6 @@ combined_df = combined_df.sort_values('exec_ts_utc')
 
 # print(combined_df['execute_delay_ms'].describe())
 
-# operation_select = 'open2'
-# operation_select = 'close2'
-# delay_quantile = delay_precentile # Filter out rows with execute_delay_ms above the delay_precentile (median) to focus on more typical cases. Adjust as needed (e.g., 80 for 80th percentile).
 # Filter out outliers based on the 95th percentile of execute_delay_ms
 upper_limit_delay = combined_df['execute_delay_ms'].quantile(delay_precentile/100)
 print(f"{delay_precentile}th percentile of execute_delay_ms: {upper_limit_delay} ms")
@@ -194,16 +185,6 @@ for b1 in basis_cols:
                 new_cols_dict[new_col_name_alt] = (df[f'{b1}_{w}_sum_ws']/(df[f'{b1}_{w}_sum_w']+1e-10)  +  alpha * df[f'{b2}_{w}_sum_ws']/(df[f'{b2}_{w}_sum_w']+1e-10)) / (1 + alpha) - df['threshold']
                 feature_cols.append(new_col_name_alt)
 
-# b1 = 'bba'
-# w = 0
-# new_col_name = f'BWT_{b1}_{w}'
-# new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
-# feature_cols.append(new_col_name)
-# b1 = 'bab'
-# w = 0
-# new_col_name = f'BWT_{b1}_{w}'
-# new_cols_dict[new_col_name] = df[f'{b1}_{w}_sum_ws'] / (df[f'{b1}_{w}_sum_w'] + 1e-10) - df['threshold']
-# feature_cols.append(new_col_name)
 for b1 in ['bba', 'bab']:
     for w in range(-N_weights, N_weights+1):
         new_col_name = f'BWT_{b1}_{w}'
