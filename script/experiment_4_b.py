@@ -133,13 +133,13 @@ def compute_safe_weighted_sum(b, x):
     exp_bx = np.exp(bx - shift)
     return np.dot(exp_bx, x), exp_bx.sum()
 
-def run_grid_search(b_vals, alpha_vals, x1_list, x2_list, labels, thresholds, eta):
+def run_grid_search(b_vals, alpha, x1_list, x2_list, labels, thresholds, eta):
     """
-    执行 (b, alpha) 网格搜索，返回 IC 矩阵与 MAD 矩阵
+    执行 (b1, b2) 网格搜索，返回 IC 矩阵与 MAD 矩阵
     eta: 1.0 (open2) 或 -1.0 (close2)，用于 MAD 符号调整
     """
-    ic_matrix = np.full((len(b_vals), len(alpha_vals)), np.nan)
-    mad_matrix = np.full((len(b_vals), len(alpha_vals)), np.nan)
+    ic_matrix = np.full((len(b_vals), len(b_vals)), np.nan)
+    mad_matrix = np.full((len(b_vals), len(b_vals)), np.nan)
     
     # 预过滤 NaN/短序列样本提升速度
     valid_mask = [len(x1) > 0 for x1 in x1_list]
@@ -149,14 +149,14 @@ def run_grid_search(b_vals, alpha_vals, x1_list, x2_list, labels, thresholds, et
     thr_v = thresholds[valid_mask]
     n_samples = len(lab_v)
     
-    pbar = tqdm(total=len(b_vals) * len(alpha_vals), desc="网格计算 IC/MAD", leave=False)
+    pbar = tqdm(total=len(b_vals) * len(b_vals), desc="网格计算 IC/MAD", leave=False)
     
-    for i, b in enumerate(b_vals):
-        for j, alpha in enumerate(alpha_vals):
+    for i, b1 in enumerate(b_vals):
+        for j, b2 in enumerate(b_vals):
             pred = np.full(n_samples, np.nan)
             for m in range(n_samples):
-                s1_num, s1_den = compute_safe_weighted_sum(b, x1_v[m])
-                s2_num, s2_den = compute_safe_weighted_sum(b, x2_v[m])
+                s1_num, s1_den = compute_safe_weighted_sum(b1, x1_v[m])
+                s2_num, s2_den = compute_safe_weighted_sum(b2, x2_v[m])
                 den = s1_den + alpha * s2_den
                 if den > 1e-12:
                     pred[m] = (s1_num + alpha * s2_num) / den - thr_v[m]
@@ -181,7 +181,7 @@ def run_grid_search(b_vals, alpha_vals, x1_list, x2_list, labels, thresholds, et
 # =============================================================================
 # 📊 绘图与输出
 # =============================================================================
-def plot_and_save_heatmap(matrix, b_vals, alpha_vals, title, save_path, cmap='RdBu_r', center=0, vmin=None, vmax=None, cbar_label='Value'):
+def plot_and_save_heatmap(matrix, b_vals, title, save_path, cmap='RdBu_r', center=0, vmin=None, vmax=None, cbar_label='Value'):
     """通用热力图绘制函数，支持 IC/MAD 不同配色"""
     fig, ax = plt.subplots(figsize=(10, 8))
     
@@ -190,12 +190,12 @@ def plot_and_save_heatmap(matrix, b_vals, alpha_vals, title, save_path, cmap='Rd
     if vmax is None: vmax = np.nanmax(matrix)
     
     sns.heatmap(matrix, ax=ax, 
-                xticklabels=np.round(alpha_vals, 2), 
+                xticklabels=np.round(b_vals, 2), 
                 yticklabels=np.round(b_vals, 1),
                 cmap=cmap, center=center, vmin=vmin, vmax=vmax,
                 cbar_kws={'label': cbar_label})
-    ax.set_xlabel('Alpha (α)')
-    ax.set_ylabel('Weight Parameter (b)')
+    ax.set_xlabel('Weight Parameter (b1)')
+    ax.set_ylabel('Weight Parameter (b2)')
     ax.set_title(title, fontweight='bold', fontsize=13)
     plt.tight_layout()
     fig.savefig(save_path, dpi=300, bbox_inches='tight')
@@ -205,17 +205,17 @@ def plot_and_save_heatmap(matrix, b_vals, alpha_vals, title, save_path, cmap='Rd
 # =============================================================================
 # 🚀 主流程
 # =============================================================================
-def run_experiment_4(
+def run_experiment_4_b(
     input_dir: Path = None,
     output_dir: Path = None,
     b_min: float = -1000.0, b_max: float = 1000.0, b_steps: int = 21,
-    alpha_min: float = 0.1, alpha_max: float = 0.9, alpha_steps: int = 9,
+    alpha: float = 0.1, 
     mode_filter: int = None,
     op_filter: str = None
 ):
-    logger.info("=== 启动 Experiment 4: 网格搜索最优 b & alpha (IC + MAD) ===")
+    logger.info("=== 启动 Experiment 4 b: 网格搜索最优 b1 & b2 (IC + MAD) ===")
     if input_dir is None: input_dir = settings.output_root / "step1_windows"
-    if output_dir is None: output_dir = settings.output_root / "experiment_4_heatmaps"
+    if output_dir is None: output_dir = settings.output_root / "experiment_4_b_heatmaps"
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. 加载数据
@@ -225,7 +225,7 @@ def run_experiment_4(
 
     # 2. 配置网格
     b_vals = np.linspace(b_min, b_max, b_steps)
-    alpha_vals = np.linspace(alpha_min, alpha_max, alpha_steps)
+    # alpha_vals = np.array([alpha])
     
     basis_map = {'X_baa': X_baa, 'X_bbb': X_bbb, 'X_bab': X_bab, 'X_bba': X_bba}
     basis_cols = {'baa': ['bba', 'bab'], 'bbb': ['bab', 'bba']}  # 4 种混合方案
@@ -241,43 +241,43 @@ def run_experiment_4(
             
             # 🔥 核心：传入 eta 用于 MAD 符号计算
             eta = 1.0 if op_filter == 'open2' else -1.0
-            ic_mat, mad_mat = run_grid_search(b_vals, alpha_vals, x1, x2, Y, thresh, eta)
+            ic_mat, mad_mat = run_grid_search(b_vals, alpha, x1, x2, Y, thresh, eta)
             
             # 📊 保存 IC 热力图 (RdBu_r: 红负蓝正，中心 0)
-            ic_path = output_dir / f"ic_heatmap_{combo_name}_range{b_min}_{b_max}_mod{mode_filter}_{op_filter}.png"
-            plot_and_save_heatmap(ic_mat, b_vals, alpha_vals, 
-                                  f'IC Heatmap: BWT_{b1}_{b2} (Method 1)', 
+            ic_path = output_dir / f"ichm_alpha_{alpha}_{combo_name}_range{b_min}_{b_max}_mod{mode_filter}_{op_filter}.png"
+            plot_and_save_heatmap(ic_mat, b_vals, 
+                                  f'IC Heatmap: BWT_{b1}_{b2}_{alpha} (Method 1)', 
                                   ic_path, cmap='RdBu_r', center=0, vmin=-1, vmax=1, cbar_label='Spearman IC')
             
             # 📊 保存 MAD 热力图 (viridis: 越小越好，低值深色)
-            mad_path = output_dir / f"mad_heatmap_{combo_name}_range{b_min}_{b_max}_mod{mode_filter}_{op_filter}.png"
+            mad_path = output_dir / f"mad_heatmap_alpha_{alpha}_{combo_name}_range{b_min}_{b_max}_mod{mode_filter}_{op_filter}.png"
             # MAD 范围自适应，通常 0~2 之间
             mad_vmax = np.nanpercentile(mad_mat, 95) if np.any(np.isfinite(mad_mat)) else 1.0
-            plot_and_save_heatmap(mad_mat, b_vals, alpha_vals, 
-                                  f'MAD Heatmap: BWT_{b1}_{b2} (Method 1)', 
+            plot_and_save_heatmap(mad_mat, b_vals, 
+                                  f'MAD Heatmap: BWT_{b1}_{b2}_{alpha} (Method 1)', 
                                   mad_path, cmap='viridis_r', center=None, vmin=0, vmax=mad_vmax, cbar_label='Mean |y - η·x|')
             
             # 🏆 打印最优结果（IC 取绝对值最大，MAD 取最小）
             if np.any(np.isfinite(ic_mat)):
                 idx_ic = np.unravel_index(np.nanargmax(np.abs(ic_mat)), ic_mat.shape)
-                logger.info(f"🏆 IC 最优: |IC|={np.abs(ic_mat[idx_ic]):.4f} | b={b_vals[idx_ic[0]]:.1f} | α={alpha_vals[idx_ic[1]]:.3f}")
+                logger.info(f"🏆 IC 最优: |IC|={np.abs(ic_mat[idx_ic]):.4f} | b1={b_vals[idx_ic[0]]:.1f} | b2={b_vals[idx_ic[1]]:.1f}")
             if np.any(np.isfinite(mad_mat)):
                 idx_mad = np.unravel_index(np.nanargmin(mad_mat), mad_mat.shape)
-                logger.info(f"🏆 MAD 最优: MAD={mad_mat[idx_mad]:.4f} | b={b_vals[idx_mad[0]]:.1f} | α={alpha_vals[idx_mad[1]]:.3f}")
+                logger.info(f"🏆 MAD 最优: MAD={mad_mat[idx_mad]:.4f} | b1={b_vals[idx_mad[0]]:.1f} | b2={b_vals[idx_mad[1]]:.1f}")
 
     logger.info(f"\n✅ 全部热力图已保存至: {output_dir}")
     logger.info("=== Experiment 4 完成 ===")
 
 if __name__ == "__main__":
-    run_experiment_4(
+    run_experiment_4_b(
         input_dir=Path("data_processed/step1_windows_eq_tick"),
-        output_dir=Path("output/experiment_4_heatmaps"),
-        b_min=-1000, b_max=1000, b_steps=21,
-        alpha_min=0, alpha_max=2, alpha_steps=11,
+        output_dir=Path("output/experiment_4_b_heatmaps"),
+        b_min=-10000, b_max=10000, b_steps=21,
+        alpha = 0.5,
         # 按需修改为 0, 2 或 None
         # ✅ 核心：'open2' 或 'close2'，用于 MAD 符号计算
-        mode_filter=0, op_filter='open2'          
-        # mode_filter=2, op_filter='open2' 
+        # mode_filter=0, op_filter='open2'          
+        mode_filter=2, op_filter='open2' 
         # mode_filter=0, op_filter='close2' 
         # mode_filter=2, op_filter='close2' 
     )
