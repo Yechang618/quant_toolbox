@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 script/experiment_4.py
-网格搜索最优 (b, alpha) 参数组合，计算 Method 1 混合因子的 IC 值与 MAD 值。
-公式: X_mix = [ Σ(exp(b·x1)·x1) + α·Σ(exp(b·x2)·x2) ] / [ Σ(exp(b·x1)) + α·Σ(exp(b·x2)) ] - threshold
+网格搜索最优 (b1, b2) 参数组合，计算 Method 1 混合因子的 IC 值与 MAD 值。
+公式: X_mix = [ Σ(exp(b1·x1)·x1) + α·Σ(exp(b2·x2)·x2) ] / [ Σ(exp(b1·x1)) + α·Σ(exp(b2·x2)) ] - threshold
 ✅ 核心特性：
   1. 动态计算权重：严格根据 w_{mi} = exp(b·x_{mi})/Σexp(b·x_{mi}) 实时计算
   2. 数值稳定：采用 log-shift 技巧防止 exp(±1000·x) 溢出
@@ -277,7 +277,7 @@ if __name__ == "__main__":
         # 按需修改为 0, 2 或 None
         # ✅ 核心：'open2' 或 'close2'，用于 MAD 符号计算
         # mode_filter=0, op_filter='open2'          
-        mode_filter=2, op_filter='open2' 
-        # mode_filter=0, op_filter='close2' 
+        # mode_filter=2, op_filter='open2' 
+        mode_filter=0, op_filter='close2' 
         # mode_filter=2, op_filter='close2' 
     )
